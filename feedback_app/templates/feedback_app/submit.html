@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 编程助教系统</title>
+    <!-- 这里借用了 Bootstrap 样式库，让网页变得极其干净现代 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5" style="max-width: 800px;">
+        <h2 class="mb-4">Python 代码反馈生成器</h2>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <!-- 这是一个表单，点击按钮就会把数据发送给后台 -->
+                <form method="POST">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit" class="btn btn-primary mt-3 w-100">生成反馈 (Generate Feedback)</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

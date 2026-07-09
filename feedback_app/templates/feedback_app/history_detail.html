@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>历史记录详情</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light pb-5">
+    <div class="container mt-5" style="max-width: 900px;">
+        <h2 class="mb-4 text-center">🗂️ 历史分析记录详情</h2>
+
+        <!-- AI 反馈部分 -->
+        <div class="card shadow-lg border-primary mb-4">
+            <div class="card-header bg-primary text-white fs-5 d-flex justify-content-between align-items-center">
+                <span>
+                    👨‍🏫 
+                    {% if record.llm_used == 'kimi' %}
+                        Kimi 智能助手
+                    {% else %}
+                        DeepSeek AI
+                    {% endif %}
+                    点评 (存档)
+                </span>
+                <span class="fs-6 text-light">{{ record.created_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <div class="card-body">
+                {% if record.ai_error %}
+                    <div class="alert alert-danger"><strong>AI 错误:</strong> {{ record.ai_error }}</div>
+                {% elif record.error_category %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <span class="badge bg-danger fs-6 mb-2">错误分类: {{ record.error_category }}</span><br>
+                            <span class="badge bg-info text-dark fs-6">涉及考点: {{ record.concept_reference }}</span>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <span class="badge bg-secondary">帮助级别: {{ record.feedback_level }}</span>
+                        </div>
+                    </div>
+                    
+                    <h5 class="text-primary mt-3">老师给你的建议：</h5>
+                    <div class="p-3 bg-light border rounded fs-5" style="border-left: 5px solid #0d6efd !important;">
+                        {{ record.feedback_text }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 运行数据和原始代码展示 -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-dark text-white">⚙️ 沙盒运行状态</div>
+                    <div class="card-body">
+                        {% if record.execution_status == 'success' %}
+                            <p class="text-success fw-bold">✅ 代码执行成功</p>
+                        {% else %}
+                            <p class="text-danger fw-bold">❌ {{ record.execution_status }}</p>
+                            <p class="text-muted small">系统捕获的报错日志 (Stderr)：</p>
+                            <pre class="text-danger bg-light p-2 rounded" style="font-size: 0.85em;"><code>{{ record.execution_stderr }}</code></pre>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-secondary text-white">📝 提交的原始代码</div>
+                    <div class="card-body">
+                        <pre class="bg-light p-2 rounded" style="font-size: 0.85em; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;"><code>{{ record.student_code }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="{% url 'history' %}" class="btn btn-outline-secondary btn-lg me-3">返回历史列表</a>
+            <a href="/" class="btn btn-primary btn-lg">提交新代码</a>
+        </div>
+    </div>
+</body>
+</html>
