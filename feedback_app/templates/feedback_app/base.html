@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}AI Programming Feedback{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+    <style>
+        :root {
+            --page-bg: #f4f6f8;
+            --surface: #ffffff;
+            --surface-soft: #f9fafb;
+            --ink: #1f2937;
+            --muted: #667085;
+            --line: #d6dbe5;
+            --brand: #2563eb;
+            --brand-dark: #1d4ed8;
+            --code-bg: #111827;
+            --code-ink: #f3f4f6;
+            --success: #047857;
+            --warning: #b45309;
+            --danger: #b42318;
+        }
+
+        * {
+            letter-spacing: 0;
+        }
+
+        body {
+            background: var(--page-bg);
+            color: var(--ink);
+            font-size: 16px;
+        }
+
+        a {
+            color: var(--brand);
+        }
+
+        .app-shell {
+            max-width: 1180px;
+        }
+
+        .app-nav {
+            background: rgba(255, 255, 255, 0.96);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .brand-mark {
+            align-items: center;
+            background: var(--brand);
+            border-radius: 8px;
+            color: #ffffff;
+            display: inline-flex;
+            height: 34px;
+            justify-content: center;
+            width: 34px;
+        }
+
+        .nav-link {
+            border-radius: 8px;
+            color: var(--muted);
+            font-weight: 600;
+            min-height: 38px;
+            padding: 0.45rem 0.75rem;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #eef4ff;
+            color: var(--brand-dark);
+        }
+
+        .page-header {
+            padding: 2rem 0 1.25rem;
+        }
+
+        .eyebrow {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 750;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            color: var(--muted);
+            margin: 0.35rem 0 0;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 12px 28px rgba(16, 24, 40, 0.06);
+        }
+
+        .panel-header {
+            border-bottom: 1px solid var(--line);
+            padding: 1rem 1.25rem;
+        }
+
+        .panel-body {
+            padding: 1.25rem;
+        }
+
+        .metric {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            min-height: 96px;
+            padding: 1rem;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1.45rem;
+            font-weight: 750;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        .feedback-box {
+            background: #f8fbff;
+            border-left: 4px solid var(--brand);
+            border-radius: 8px;
+            line-height: 1.65;
+            padding: 1rem;
+        }
+
+        .code-block,
+        pre {
+            background: var(--code-bg);
+            border: 1px solid #263244;
+            border-radius: 8px;
+            color: var(--code-ink);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin: 0;
+            max-height: 360px;
+            overflow: auto;
+            padding: 1rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .code-block-light {
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            max-height: 150px;
+            padding: 0.75rem;
+        }
+
+        .form-control,
+        .form-select {
+            border-color: var(--line);
+            border-radius: 8px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.16);
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        .btn {
+            align-items: center;
+            border-radius: 8px;
+            display: inline-flex;
+            font-weight: 650;
+            gap: 0.45rem;
+            justify-content: center;
+            min-height: 38px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--brand);
+            border-color: var(--brand);
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-dark);
+            border-color: var(--brand-dark);
+        }
+
+        .icon-sm {
+            height: 16px;
+            width: 16px;
+        }
+
+        .badge-soft {
+            background: #eef4ff;
+            border: 1px solid #c7d7fe;
+            color: var(--brand-dark);
+        }
+
+        .badge-success-soft {
+            background: #ecfdf3;
+            border: 1px solid #abefc6;
+            color: var(--success);
+        }
+
+        .badge-warning-soft {
+            background: #fffaeb;
+            border: 1px solid #fedf89;
+            color: var(--warning);
+        }
+
+        .badge-danger-soft {
+            background: #fef3f2;
+            border: 1px solid #fecdca;
+            color: var(--danger);
+        }
+
+        .table {
+            --bs-table-bg: transparent;
+        }
+
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
+
+        .progress-thin {
+            background: #eef2f7;
+            border-radius: 999px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .progress-thin > span {
+            background: var(--brand);
+            display: block;
+            height: 100%;
+        }
+
+        .sparkline {
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            display: block;
+            height: auto;
+            margin-inline: auto;
+            max-width: 1040px;
+            width: 100%;
+        }
+
+        .sparkline-wrap {
+            position: relative;
+        }
+
+        .chart-wrap {
+            position: relative;
+        }
+
+        .sparkline-grid {
+            stroke: #dbe3ef;
+            stroke-width: 1;
+        }
+
+        .sparkline-line {
+            fill: none;
+            stroke: var(--brand);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2.4;
+        }
+
+        .sparkline-point {
+            fill: var(--surface);
+            stroke: var(--brand-dark);
+            stroke-width: 1.7;
+        }
+
+        .sparkline-node {
+            cursor: help;
+            outline: none;
+        }
+
+        .sparkline-node:hover .sparkline-point,
+        .sparkline-node:focus .sparkline-point {
+            fill: #dbeafe;
+            stroke: var(--brand);
+            stroke-width: 2.5;
+        }
+
+        .sparkline-axis-label,
+        .sparkline-attempt-label,
+        .sparkline-score-label {
+            fill: var(--muted);
+            font-size: 5px;
+            font-weight: 700;
+        }
+
+        .sparkline-score-label {
+            fill: var(--ink);
+            font-size: 5.5px;
+        }
+
+        .sparkline-tooltip,
+        .chart-tooltip {
+            background: #111827;
+            border-radius: 8px;
+            box-shadow: 0 18px 36px rgba(16, 24, 40, 0.22);
+            color: #ffffff;
+            font-size: 0.78rem;
+            left: 0;
+            line-height: 1.45;
+            max-width: min(320px, calc(100vw - 2rem));
+            padding: 0.65rem 0.75rem;
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            transform: translate(-50%, calc(-100% - 12px));
+            white-space: normal;
+            z-index: 20;
+        }
+
+        .sparkline-tooltip[hidden],
+        .chart-tooltip[hidden] {
+            display: none;
+        }
+
+        .radar-chart {
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            display: block;
+            height: auto;
+            margin-inline: auto;
+            max-width: 680px;
+            width: 100%;
+        }
+
+        .radar-grid {
+            fill: none;
+            stroke: #d6deea;
+            stroke-width: 1;
+        }
+
+        .radar-axis {
+            stroke: #c7d1df;
+            stroke-width: 1;
+        }
+
+        .radar-area {
+            fill: rgba(37, 99, 235, 0.2);
+            stroke: var(--brand);
+            stroke-linejoin: round;
+            stroke-width: 2.5;
+        }
+
+        .radar-point {
+            fill: var(--surface);
+            stroke: var(--brand-dark);
+            stroke-width: 2.5;
+        }
+
+        .radar-point-empty {
+            fill: #eef2f7;
+            stroke: #98a2b3;
+        }
+
+        .radar-hit-area {
+            fill: transparent;
+            stroke: transparent;
+        }
+
+        .radar-skill-link {
+            cursor: pointer;
+            outline: none;
+            text-decoration: none;
+        }
+
+        .radar-skill-link:hover .radar-point,
+        .radar-skill-link:focus .radar-point {
+            fill: #dbeafe;
+            stroke: var(--brand);
+            stroke-width: 4;
+        }
+
+        .radar-skill-link:hover .radar-topic-label,
+        .radar-skill-link:focus .radar-topic-label {
+            fill: var(--brand-dark);
+            font-weight: 750;
+        }
+
+        .radar-topic-label {
+            fill: var(--ink);
+            font-size: 11px;
+            font-weight: 650;
+        }
+
+        .radar-scale-label {
+            fill: var(--muted);
+            font-size: 9px;
+            font-weight: 650;
+        }
+
+        .skill-score-row {
+            align-items: center;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            gap: 1rem;
+            justify-content: space-between;
+            padding: 0.7rem 0;
+        }
+
+        .skill-score-row:first-of-type {
+            padding-top: 0;
+        }
+
+        .skill-score-row:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .score-note {
+            background: #f8fbff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            padding: 0.85rem 1rem;
+        }
+
+        .compact-metric {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            min-height: 82px;
+            padding: 0.85rem;
+        }
+
+        .compact-metric .metric-value {
+            font-size: 1.2rem;
+        }
+
+        .stat-list-item {
+            border-bottom: 1px solid var(--line);
+            padding: 0.75rem 0;
+        }
+
+        .stat-list-item:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .tag-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .question-preview[hidden] {
+            display: none;
+        }
+
+        .question-preview {
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .section-gap {
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 767.98px) {
+            .page-header {
+                padding-top: 1.25rem;
+            }
+
+            .page-title {
+                font-size: 1.45rem;
+            }
+
+            .panel-body {
+                padding: 1rem;
+            }
+
+            .app-nav .btn,
+            .page-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="app-nav">
+        <div class="container app-shell py-3">
+            <div class="d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-between">
+                <a href="{% url 'home' %}" class="d-flex align-items-center gap-2 text-decoration-none text-dark">
+                    <span class="brand-mark" aria-hidden="true"><i data-lucide="code-2" class="icon-sm"></i></span>
+                    <span class="fw-bold">AI Programming Feedback</span>
+                </a>
+
+                {% if request.user.is_authenticated %}
+                    <div class="d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
+                        {% if request.user.is_staff %}
+                            <a class="nav-link {% if request.resolver_match.url_name == 'instructor_dashboard' %}active{% endif %}" href="{% url 'instructor_dashboard' %}">Instructor</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'analytics_dashboard' %}active{% endif %}" href="{% url 'analytics_dashboard' %}">Analytics</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'evaluation_dashboard' %}active{% endif %}" href="{% url 'evaluation_dashboard' %}">Evaluation</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'experiment' %}active{% endif %}" href="{% url 'experiment' %}">Experiment</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'history' or request.resolver_match.url_name == 'history_detail' %}active{% endif %}" href="{% url 'history' %}">History</a>
+                            <a class="nav-link" href="{% url 'admin:index' %}">Admin</a>
+                        {% else %}
+                            <a class="nav-link {% if request.resolver_match.url_name == 'student_submit' %}active{% endif %}" href="{% url 'student_submit' %}">Submit</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'my_profile' %}active{% endif %}" href="{% url 'my_profile' %}">Progress</a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'history' or request.resolver_match.url_name == 'history_detail' %}active{% endif %}" href="{% url 'history' %}">History</a>
+                        {% endif %}
+                        <form method="post" action="{% url 'logout' %}" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-secondary" title="Sign out">
+                                <i data-lucide="log-out" class="icon-sm" aria-hidden="true"></i>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="container app-shell pb-5">
+        {% block page_header %}
+            <header class="page-header d-flex flex-column flex-lg-row gap-3 align-items-lg-end justify-content-between">
+                <div>
+                    <div class="eyebrow">{% block page_eyebrow %}{% endblock %}</div>
+                    <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+                    <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                </div>
+                <div class="page-actions d-flex flex-wrap gap-2">
+                    {% block page_actions %}{% endblock %}
+                </div>
+            </header>
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        window.addEventListener("DOMContentLoaded", function () {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+
+            document.querySelectorAll(".sparkline-wrap, .chart-wrap").forEach(function (wrap) {
+                const tooltip = wrap.querySelector(".sparkline-tooltip, .chart-tooltip");
+                if (!tooltip) {
+                    return;
+                }
+
+                const moveTooltip = function (target, clientX, clientY) {
+                    const wrapRect = wrap.getBoundingClientRect();
+                    const x = clientX - wrapRect.left;
+                    const y = clientY - wrapRect.top;
+                    const tooltipHalf = Math.min(150, wrapRect.width / 2);
+                    const boundedX = Math.min(Math.max(x, tooltipHalf), wrapRect.width - tooltipHalf);
+                    tooltip.style.left = `${boundedX}px`;
+                    tooltip.style.top = `${Math.max(y, 42)}px`;
+                    tooltip.textContent = target.dataset.tooltip || "";
+                    tooltip.hidden = false;
+                };
+
+                wrap.querySelectorAll(".sparkline-node, .chart-node").forEach(function (node) {
+                    node.addEventListener("mouseenter", function (event) {
+                        moveTooltip(node, event.clientX, event.clientY);
+                    });
+                    node.addEventListener("mousemove", function (event) {
+                        moveTooltip(node, event.clientX, event.clientY);
+                    });
+                    node.addEventListener("mouseleave", function () {
+                        tooltip.hidden = true;
+                    });
+                    node.addEventListener("focus", function () {
+                        const nodeRect = node.getBoundingClientRect();
+                        moveTooltip(
+                            node,
+                            nodeRect.left + nodeRect.width / 2,
+                            nodeRect.top + nodeRect.height / 2
+                        );
+                    });
+                    node.addEventListener("blur", function () {
+                        tooltip.hidden = true;
+                    });
+                });
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

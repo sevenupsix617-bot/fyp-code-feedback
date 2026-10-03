@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="362" viewBox="0 0 920 362">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="32" fill="#1f2937" font-family="Arial" font-size="20" font-weight="700">Ground-Truth Category Distribution</text>
+<text x="24" y="73" fill="#344054" font-family="Arial" font-size="13">Logic Error</text>
+<rect x="250" y="59" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="59" width="630" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="73" fill="#344054" font-family="Arial" font-size="13">102</text>
+<text x="24" y="107" fill="#344054" font-family="Arial" font-size="13">Name Error</text>
+<rect x="250" y="93" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="93" width="592" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="107" fill="#344054" font-family="Arial" font-size="13">96</text>
+<text x="24" y="141" fill="#344054" font-family="Arial" font-size="13">Index Error</text>
+<rect x="250" y="127" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="127" width="259" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="141" fill="#344054" font-family="Arial" font-size="13">42</text>
+<text x="24" y="175" fill="#344054" font-family="Arial" font-size="13">Loop Boundary Error</text>
+<rect x="250" y="161" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="161" width="148" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="175" fill="#344054" font-family="Arial" font-size="13">24</text>
+<text x="24" y="209" fill="#344054" font-family="Arial" font-size="13">Type Error</text>
+<rect x="250" y="195" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="195" width="148" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="209" fill="#344054" font-family="Arial" font-size="13">24</text>
+<text x="24" y="243" fill="#344054" font-family="Arial" font-size="13">Condition Error</text>
+<rect x="250" y="229" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="229" width="111" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="243" fill="#344054" font-family="Arial" font-size="13">18</text>
+<text x="24" y="277" fill="#344054" font-family="Arial" font-size="13">Function Error</text>
+<rect x="250" y="263" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="263" width="111" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="277" fill="#344054" font-family="Arial" font-size="13">18</text>
+<text x="24" y="311" fill="#344054" font-family="Arial" font-size="13">Value Error</text>
+<rect x="250" y="297" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="297" width="37" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="311" fill="#344054" font-family="Arial" font-size="13">6</text>
+</svg>

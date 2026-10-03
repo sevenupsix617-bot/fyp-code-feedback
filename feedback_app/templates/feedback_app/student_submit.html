@@ -1,0 +1,124 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}Student Submission | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}Student Portal{% endblock %}
+{% block page_title %}Submit Python Code{% endblock %}
+{% block page_subtitle %}Choose a preset question and submit your Python code for feedback.{% endblock %}
+
+{% block page_actions %}
+    <a href="{% url 'history' %}" class="btn btn-outline-secondary">
+        <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
+        History
+    </a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    #id_student_code {
+        min-height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <section class="panel">
+        <div class="panel-header">
+            <div class="eyebrow">Question and Submission</div>
+            <h2 class="h5 mb-0">
+                {% if retry_record %}Retry {{ retry_record.question.title }}{% else %}Runtime Feedback Request{% endif %}
+            </h2>
+        </div>
+        <div class="panel-body">
+            {% if retry_record %}
+                <div class="alert alert-primary mb-4">
+                    Your previous code is preserved below. Edit it and submit another attempt for the same question.
+                </div>
+            {% endif %}
+            <form method="POST">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.question.id_for_label }}">{{ form.question.label }}</label>
+                    {{ form.question }}
+                    {% if form.question.errors %}
+                        <div class="text-danger small mt-1">{{ form.question.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    {% for question in questions %}
+                        <div class="question-preview" data-question-id="{{ question.id }}" hidden>
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                <div>
+                                    <div class="eyebrow">Selected Question</div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                        <h3 class="h5 mb-0">{{ question.title }}</h3>
+                                        {% if question.status == "solved" %}
+                                            <span class="badge badge-success-soft">{{ question.status_badge }}</span>
+                                        {% elif question.status == "in_progress" %}
+                                            <span class="badge badge-warning-soft">{{ question.status_badge }}</span>
+                                        {% else %}
+                                            <span class="badge badge-soft">{{ question.status_badge }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mb-0">{{ question.problem_statement }}</p>
+                                </div>
+                                <div class="text-md-end small text-muted">
+                                    <div>{{ question.difficulty|default:"Difficulty not set" }}</div>
+                                    <div>{{ question.topic_label_list|join:", "|default:"No topic tags" }}</div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="eyebrow mb-2">Sample Input</div>
+                                    <pre class="code-block"><code>{{ question.sample_input|default:"No stdin input." }}</code></pre>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="eyebrow mb-2">Expected Output</div>
+                                    <pre class="code-block"><code>{{ question.expected_output|default:"No expected output." }}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.student_code.id_for_label }}">{{ form.student_code.label }}</label>
+                    {{ form.student_code }}
+                    {% if form.student_code.errors %}
+                        <div class="text-danger small mt-1">{{ form.student_code.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    <i data-lucide="send" class="icon-sm" aria-hidden="true"></i>
+                    Generate Feedback
+                </button>
+            </form>
+        </div>
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const questionSelect = document.getElementById("id_question");
+    const previews = document.querySelectorAll("[data-question-id]");
+
+    function showSelectedQuestion() {
+        const selectedId = questionSelect ? questionSelect.value : "";
+        previews.forEach((preview) => {
+            preview.hidden = preview.dataset.questionId !== selectedId;
+        });
+    }
+
+    if (questionSelect) {
+        questionSelect.addEventListener("change", showSelectedQuestion);
+        showSelectedQuestion();
+    }
+</script>
+{% endblock %}

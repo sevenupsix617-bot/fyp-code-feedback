@@ -1,0 +1,384 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}Evaluation | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}Systematic Evaluation{% endblock %}
+{% block page_title %}Batch Evaluation Results{% endblock %}
+{% block page_subtitle %}Final evidence summaries, stored batch runs, and reproducible provider/prompt metrics.{% endblock %}
+
+{% block page_actions %}
+    <a href="{% url 'admin:feedback_app_evaluationrun_changelist' %}" class="btn btn-outline-primary">
+        <i data-lucide="database" class="icon-sm" aria-hidden="true"></i>
+        Runs Admin
+    </a>
+    <a href="{% url 'admin:feedback_app_evaluationresult_changelist' %}" class="btn btn-primary">
+        <i data-lucide="table-2" class="icon-sm" aria-hidden="true"></i>
+        Results Admin
+    </a>
+{% endblock %}
+
+{% block content %}
+    {% if final_reports %}
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <div class="eyebrow">Final Evidence</div>
+                <h2 class="h5 mb-0">Report-Ready Evaluation Overview</h2>
+            </div>
+            <div class="panel-body">
+                <div class="alert alert-warning mb-4">
+                    <div class="fw-semibold mb-1">Historical taxonomy notice</div>
+                    <div class="small">
+                        The current PECI A-X evaluation and the historical Day 12/Day 14 evaluations are separate evidence sets. Day 12 and Day 14 used the earlier project-defined v1/v2 taxonomy; those historical labels are not PECI Table 1 categories, so their 77.88% and 83.33% results must not be reported as PECI A-X accuracy. The current A-X result uses researcher-confirmed AI-assisted annotation and the live strict-scaffolded prompt.
+                    </div>
+                </div>
+                <div class="row g-4">
+                    {% for report in final_reports %}
+                        <div class="{% if report.key_findings %}col-12{% else %}col-xl-6{% endif %}">
+                            <section class="compact-metric h-100">
+                                <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <span class="badge badge-soft mb-2">{{ report.badge }}</span>
+                                        <h3 class="h5 mb-1">{{ report.title }}</h3>
+                                        <p class="text-muted mb-0">{{ report.description }}</p>
+                                    </div>
+                                    <a href="{% url 'admin:feedback_app_evaluationrun_changelist' %}" class="btn btn-sm btn-outline-secondary align-self-start">
+                                        <i data-lucide="database" class="icon-sm" aria-hidden="true"></i>
+                                        Runs
+                                    </a>
+                                </div>
+
+                                {% if report.key_findings %}
+                                    <div class="alert alert-primary mb-3">
+                                        <div class="fw-semibold mb-1">Key findings for demo/report discussion</div>
+                                        <div class="small">
+                                            {{ report.findings_intro }}
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        {% for finding in report.key_findings %}
+                                            <div class="col-md-6 col-xl-3">
+                                                <div class="compact-metric h-100">
+                                                    <div class="metric-label">{{ finding.title }}</div>
+                                                    <div class="metric-value">{{ finding.metric }}</div>
+                                                    <div class="small text-muted mt-2">{{ finding.body }}</div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-lg-7">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Prompt setting</th>
+                                                            <th>Accuracy</th>
+                                                            <th>Interpretation</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for row in report.prompt_rows %}
+                                                            <tr>
+                                                                <td class="fw-semibold">{{ row.prompt }}</td>
+                                                                <td>{{ row.accuracy }}</td>
+                                                                <td class="text-muted">{{ row.note }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-5">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Provider</th>
+                                                            <th>Accuracy</th>
+                                                            <th>Avg latency</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for row in report.provider_rows %}
+                                                            <tr>
+                                                                <td class="fw-semibold">{{ row.provider }}</td>
+                                                                <td>{{ row.accuracy }}</td>
+                                                                <td>{{ row.latency }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="small text-muted mt-2">{{ report.cost_note }}</div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <div class="row g-2">
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">Samples</div>
+                                        <div class="metric-value">{{ report.dataset_size }}</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">Outputs</div>
+                                        <div class="metric-value">{{ report.total_results }}</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">Accuracy</div>
+                                        <div class="metric-value">{{ report.category_accuracy }}</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">{{ report.quality_metric_label|default:"JSON" }}</div>
+                                        <div class="metric-value">{{ report.json_compliance_rate }}</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">Leakage</div>
+                                        <div class="metric-value">{{ report.solution_leakage_rate }}</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="metric-label">AI/API Errors</div>
+                                        <div class="metric-value">{{ report.ai_error_count }}</div>
+                                    </div>
+                                </div>
+
+                                {% if report.reviewed_count %}
+                                    <div class="border-top mt-3 pt-3">
+                                        <div class="metric-label">AI-Assisted Human Review Spot-Check</div>
+                                        <div class="small text-muted">
+                                            {{ report.reviewed_count }} reviewed, {{ report.review_coverage_rate }} coverage,
+                                            helpfulness {{ report.average_helpfulness_score }}/5,
+                                            actionability {{ report.average_actionability_score }}/5.
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <div class="border-top mt-3 pt-3 small text-muted">
+                                    Providers: {{ report.providers }}<br>
+                                    Prompts: {{ report.prompt_versions }}<br>
+                                    Summary file: {{ report.summary_label }}
+                                </div>
+                            </section>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if latest_run %}
+        <div class="row g-3 section-gap">
+            <div class="col-md-6 col-xl-3">
+                <div class="metric">
+                    <div class="metric-label">Latest Stored Run</div>
+                    <div class="metric-value">{{ latest_run.run_mode }}</div>
+                    <div class="small text-muted mt-2">{{ latest_run.dataset_size }} samples</div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="metric">
+                    <div class="metric-label">Results</div>
+                    <div class="metric-value">{{ summary.total_results|default:"0" }}</div>
+                    <div class="small text-muted mt-2">{{ latest_run.providers|join:", " }}</div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="metric">
+                    <div class="metric-label">Category Accuracy</div>
+                    <div class="metric-value">{{ summary.category_accuracy|default:"N/A" }}</div>
+                    <div class="small text-muted mt-2">Ground truth vs predicted category</div>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="metric">
+                    <div class="metric-label">Leakage Rate</div>
+                    <div class="metric-value">{{ summary.solution_leakage_rate|default:"N/A" }}</div>
+                    <div class="small text-muted mt-2">Flagged full-solution disclosure</div>
+                </div>
+            </div>
+        </div>
+
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <div class="eyebrow">Database Run Detail</div>
+                <h2 class="h5 mb-0">{{ latest_run.name }}</h2>
+            </div>
+            <div class="panel-body">
+                <div class="alert alert-secondary mb-3">
+                    This section shows the most recent stored batch run. Use the Final Evidence panel above for the current PECI A-X result and the separate historical Day 12/Day 14 conclusions.
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="compact-metric">
+                            <div class="metric-label">JSON Compliance</div>
+                            <div class="metric-value">{{ summary.json_compliance_rate|default:"N/A" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="compact-metric">
+                            <div class="metric-label">Runtime Evidence</div>
+                            <div class="metric-value">{{ summary.runtime_evidence_usage_rate|default:"N/A" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="compact-metric">
+                            <div class="metric-label">Average Latency</div>
+                            <div class="metric-value">{{ summary.average_latency_ms|default:"N/A" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="compact-metric">
+                            <div class="metric-label">AI/API Errors</div>
+                            <div class="metric-value">{{ summary.ai_error_count|default:"0" }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if summary.day12_analysis %}
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-4">
+                            <div class="compact-metric">
+                                <div class="metric-label">AI-Assisted Review Coverage</div>
+                                <div class="metric-value">{{ summary.day12_analysis.human_review_metrics.review_coverage_rate|default:"N/A" }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="compact-metric">
+                                <div class="metric-label">Avg Helpfulness</div>
+                                <div class="metric-value">{{ summary.day12_analysis.human_review_metrics.average_helpfulness_score|default:"N/A" }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="compact-metric">
+                                <div class="metric-label">Avg Actionability</div>
+                                <div class="metric-value">{{ summary.day12_analysis.human_review_metrics.average_actionability_score|default:"N/A" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="mt-3 small text-muted">
+                    Dataset: {{ latest_run.dataset_name }} - Started: {{ latest_run.started_at|date:"Y-m-d H:i" }} - Completed: {{ latest_run.completed_at|date:"Y-m-d H:i" }}
+                </div>
+                {% if latest_run.run_mode == "dry_run" %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        This run validates the batch pipeline with an offline oracle. It should not be reported as real LLM performance.
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if summary.day12_analysis.artifact_paths %}
+            <section class="panel section-gap">
+                <div class="panel-header">
+                    <div class="eyebrow">Report Artifacts</div>
+                    <h2 class="h5 mb-0">Day 12 Exported Evidence</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="row g-3">
+                        {% for label, path in summary.day12_analysis.artifact_paths.items %}
+                            <div class="col-md-6">
+                                <div class="compact-metric">
+                                    <div class="metric-label">{{ label }}</div>
+                                    <div class="small text-break">{{ path }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="panel section-gap">
+            <div class="panel-header">
+                <div class="eyebrow">Recent Results</div>
+                <h2 class="h5 mb-0">Sample-Level Evidence</h2>
+            </div>
+            <div class="panel-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Sample</th>
+                                <th>Provider</th>
+                                <th>Prompt</th>
+                                <th>Ground Truth</th>
+                                <th>Predicted</th>
+                                <th>JSON</th>
+                                <th>Leakage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in latest_results %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ result.sample_id }}</div>
+                                        <div class="small text-muted">{{ result.source_record_path }}</div>
+                                    </td>
+                                    <td>{{ result.provider }}</td>
+                                    <td><span class="badge badge-soft">{{ result.prompt_version }}</span></td>
+                                    <td>{{ result.ground_truth_category }}</td>
+                                    <td>
+                                        {% if result.category_match %}
+                                            <span class="badge badge-success-soft">{{ result.predicted_category }}</span>
+                                        {% else %}
+                                            <span class="badge badge-warning-soft">{{ result.predicted_category|default:"N/A" }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ result.json_compliance|yesno:"OK,Failed,N/A" }}</td>
+                                    <td>{{ result.solution_leakage_flag|yesno:"Flagged,Clean,N/A" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">No result rows were saved for this run.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    {% else %}
+        <section class="panel section-gap">
+            <div class="panel-body">
+                <p class="mb-0 text-muted">No evaluation run has been saved yet.</p>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="panel">
+        <div class="panel-header">
+            <div class="eyebrow">Run History</div>
+            <h2 class="h5 mb-0">Last 10 Evaluation Runs</h2>
+        </div>
+        <div class="panel-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Mode</th>
+                            <th>Samples</th>
+                            <th>Results</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for run in runs %}
+                            <tr>
+                                <td>{{ run.name }}</td>
+                                <td><span class="badge badge-soft">{{ run.run_mode }}</span></td>
+                                <td>{{ run.dataset_size }}</td>
+                                <td>{{ run.summary.total_results|default:"N/A" }}</td>
+                                <td>{{ run.started_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No evaluation runs yet.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

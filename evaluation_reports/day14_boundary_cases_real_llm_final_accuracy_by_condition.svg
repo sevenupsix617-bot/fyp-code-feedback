@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="294" viewBox="0 0 920 294">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="32" fill="#1f2937" font-family="Arial" font-size="20" font-weight="700">Category Accuracy by Provider and Prompt</text>
+<text x="24" y="73" fill="#344054" font-family="Arial" font-size="13">deepseek:baseline</text>
+<rect x="250" y="59" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="59" width="367" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="73" fill="#344054" font-family="Arial" font-size="13">0.5833</text>
+<text x="24" y="107" fill="#344054" font-family="Arial" font-size="13">deepseek:context_aware</text>
+<rect x="250" y="93" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="93" width="577" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="107" fill="#344054" font-family="Arial" font-size="13">0.9167</text>
+<text x="24" y="141" fill="#344054" font-family="Arial" font-size="13">deepseek:strict_scaffolded</text>
+<rect x="250" y="127" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="127" width="577" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="141" fill="#344054" font-family="Arial" font-size="13">0.9167</text>
+<text x="24" y="175" fill="#344054" font-family="Arial" font-size="13">kimi:baseline</text>
+<rect x="250" y="161" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="161" width="472" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="175" fill="#344054" font-family="Arial" font-size="13">0.7500</text>
+<text x="24" y="209" fill="#344054" font-family="Arial" font-size="13">kimi:context_aware</text>
+<rect x="250" y="195" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="195" width="577" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="209" fill="#344054" font-family="Arial" font-size="13">0.9167</text>
+<text x="24" y="243" fill="#344054" font-family="Arial" font-size="13">kimi:strict_scaffolded</text>
+<rect x="250" y="229" width="630" height="18" rx="4" fill="#eef2f7"/>
+<rect x="250" y="229" width="577" height="18" rx="4" fill="#2563eb"/>
+<text x="890" y="243" fill="#344054" font-family="Arial" font-size="13">0.9167</text>
+</svg>

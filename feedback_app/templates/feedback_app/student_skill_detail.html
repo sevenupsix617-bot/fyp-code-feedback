@@ -1,0 +1,154 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}{{ skill.topic.label }} | Skill Evidence{% endblock %}
+{% block page_eyebrow %}Topic Skill Evidence{% endblock %}
+{% block page_title %}{{ skill.topic.label }}{% endblock %}
+{% block page_subtitle %}{{ skill.user.username }} · {{ skill.topic.definition }}{% endblock %}
+
+{% block page_actions %}
+    {% if request.user.is_staff %}
+        <a href="{% url 'student_profile' skill.user.id %}" class="btn btn-outline-secondary">
+            <i data-lucide="arrow-left" class="icon-sm" aria-hidden="true"></i>
+            Back to Student Profile
+        </a>
+        <a href="{% url 'history' %}?student={{ skill.user.id }}" class="btn btn-primary">
+            <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
+            Student History
+        </a>
+    {% else %}
+        <a href="{% url 'my_profile' %}" class="btn btn-outline-secondary">
+            <i data-lucide="arrow-left" class="icon-sm" aria-hidden="true"></i>
+            Back to Progress
+        </a>
+        <a href="{% url 'student_submit' %}" class="btn btn-primary">
+            <i data-lucide="send" class="icon-sm" aria-hidden="true"></i>
+            Submit Code
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="row g-3 section-gap">
+        <div class="col-md-4">
+            <div class="metric">
+                <div class="metric-label">Current Mastery</div>
+                <div class="metric-value">
+                    {% if skill.topic.has_evidence %}{{ skill.topic.score }}/100{% else %}No evidence{% endif %}
+                </div>
+                <div class="small text-muted mt-2">Latest attempt per tagged question, averaged</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric">
+                <div class="metric-label">Questions Attempted</div>
+                <div class="metric-value">{{ skill.question_count }}</div>
+                <div class="small text-muted mt-2">Questions carrying this fixed Topic tag</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="metric">
+                <div class="metric-label">Saved Attempts</div>
+                <div class="metric-value">{{ skill.total_attempts }}</div>
+                <div class="small text-muted mt-2">All stored attempts for this Topic</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="panel section-gap">
+        <div class="panel-header">
+            <div class="eyebrow">Time-Based Evidence</div>
+            <h2 class="h5 mb-0">{{ skill.topic.label }} Attempt Timeline</h2>
+        </div>
+        <div class="panel-body">
+            {% if skill.sparkline %}
+                <div class="sparkline-wrap mb-3">
+                    <svg class="sparkline" viewBox="0 0 260 84" preserveAspectRatio="xMidYMid meet" role="img" aria-label="{{ skill.topic.label }} attempt timeline for {{ skill.user.username }}">
+                        <text class="sparkline-axis-label" x="5" y="16">100</text>
+                        <text class="sparkline-axis-label" x="8" y="37">50</text>
+                        <text class="sparkline-axis-label" x="11" y="58">0</text>
+                        <line class="sparkline-grid" x1="20" y1="14" x2="246" y2="14"></line>
+                        <line class="sparkline-grid" x1="20" y1="35" x2="246" y2="35"></line>
+                        <line class="sparkline-grid" x1="20" y1="56" x2="246" y2="56"></line>
+                        <polyline class="sparkline-line" points="{{ skill.sparkline }}"></polyline>
+                        {% for point in skill.sparkline_nodes %}
+                            <g class="sparkline-node" tabindex="0" data-tooltip="{{ point.tooltip }}">
+                                <circle class="sparkline-point" cx="{{ point.x }}" cy="{{ point.y }}" r="3">
+                                    <title>{{ point.tooltip }}</title>
+                                </circle>
+                                <text class="sparkline-score-label" x="{{ point.x }}" y="{{ point.score_label_y }}" text-anchor="middle">{{ point.score }}</text>
+                                <text class="sparkline-attempt-label" x="{{ point.x }}" y="74" text-anchor="middle">{{ point.label }}</text>
+                            </g>
+                        {% endfor %}
+                    </svg>
+                    <div class="sparkline-tooltip" hidden></div>
+                </div>
+                <p class="small text-muted mb-0">Hover or focus a point to see its question, date, error classification, solved state, comparison result, and scoring reason.</p>
+            {% else %}
+                <p class="text-muted mb-0">No attempt has been saved for a question tagged with this Topic.</p>
+            {% endif %}
+
+            <div class="score-note mt-3">
+                <strong>How this Topic score is calculated:</strong>
+                No Error = 100; output mismatch = 45; sample output matched but an unresolved issue remains = 40;
+                unresolved classified attempt without decisive output evidence = 35; execution error = 20; no reliable evidence = 0.
+                The current mastery value uses only the latest attempt for each attempted question carrying this Topic tag, then averages those question-level scores.
+                The line above shows individual attempts over time and may include several questions.
+                This is a prototype heuristic, not a standardised educational measurement.
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header">
+            <div class="eyebrow">Traceable Records</div>
+            <h2 class="h5 mb-0">Attempt Evidence</h2>
+        </div>
+        <div class="panel-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Timeline</th>
+                            <th>Date</th>
+                            <th>Question</th>
+                            <th>Question Attempt</th>
+                            <th>Score</th>
+                            <th>Error Classification</th>
+                            <th>Solved</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attempt in skill.timeline %}
+                            <tr>
+                                <td>{{ attempt.label }}</td>
+                                <td>{{ attempt.date }}</td>
+                                <td>{{ attempt.question }}</td>
+                                <td>A{{ attempt.question_attempt }}</td>
+                                <td>{{ attempt.score }}</td>
+                                <td>{{ attempt.category }}</td>
+                                <td>
+                                    {% if attempt.solved %}
+                                        <span class="badge badge-success-soft">Solved</span>
+                                    {% else %}
+                                        <span class="badge badge-warning-soft">Unresolved</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'history_detail' attempt.record.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i data-lucide="eye" class="icon-sm" aria-hidden="true"></i>
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">No evidence is available for this Topic.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

@@ -4,3 +4,15 @@ __pycache__/
 db.sqlite3
 .venv/
 .DS_Store
+evaluation_runs/
+evaluation_reports/*
+!evaluation_reports/day14_boundary_cases_real_llm_final_*.svg
+!evaluation_reports/day14_boundary_cases_real_llm_final_summary.md
+!evaluation_reports/day14_boundary_cases_real_llm_final_summary.json
+!evaluation_reports/day12_ai_assisted_human_review_final_20.csv
+!evaluation_reports/day12_api_cost_estimate.md
+!evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_summary.md
+!evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_summary.json
+!evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_*.svg
+staticfiles/
+screenlog.0

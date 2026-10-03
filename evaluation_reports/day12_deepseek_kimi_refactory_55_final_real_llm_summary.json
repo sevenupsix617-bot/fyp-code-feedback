@@ -1,0 +1,308 @@
+{
+  "run": {
+    "id": "aggregate:22,10,12,13,14,23,16,17,18,20,21,11,24,25,26,27,28,29,30,31,32,33,34,35",
+    "name": "Day 12 DeepSeek and Kimi Refactory 55-sample final aggregate",
+    "run_mode": "llm",
+    "dataset_name": "Refactory",
+    "dataset_size": 55,
+    "providers": [
+      "deepseek",
+      "kimi"
+    ],
+    "prompt_versions": [
+      "baseline",
+      "context_aware",
+      "strict_scaffolded"
+    ],
+    "notes": "Aggregated EvaluationRun ids: [22, 10, 12, 13, 14, 23, 16, 17, 18, 20, 21, 11, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]. Result filters: providers=all, prompt_versions=all. Duplicate result keys detected and deduplicated by latest run id: 80.",
+    "started_at": "2026-09-10T14:10:20.577977+00:00",
+    "completed_at": "2026-09-11T10:03:47.405209+00:00"
+  },
+  "source_run_ids": [
+    22,
+    10,
+    12,
+    13,
+    14,
+    23,
+    16,
+    17,
+    18,
+    20,
+    21,
+    11,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35
+  ],
+  "source_dataset_paths": [
+    "/Users/a77777/Desktop/fyp-code-feedback/evaluation_samples.json"
+  ],
+  "automatic_metrics": {
+    "total_results": 330,
+    "category_accuracy": 0.7788,
+    "json_compliance_rate": 0.997,
+    "strict_schema_rate": 0.0697,
+    "usable_schema_rate": 0.997,
+    "solution_leakage_rate": 0.0,
+    "runtime_evidence_usage_rate": 0.6667,
+    "average_latency_ms": 6472.02,
+    "token_totals": {
+      "prompt_tokens": 387410,
+      "completion_tokens": 195193,
+      "total_tokens": 582603
+    },
+    "estimated_cost_total": null,
+    "ai_error_count": 1,
+    "provider_counts": {
+      "deepseek": 165,
+      "kimi": 165
+    },
+    "prompt_version_counts": {
+      "baseline": 110,
+      "context_aware": 110,
+      "strict_scaffolded": 110
+    },
+    "ground_truth_counts": {
+      "Condition Error": 18,
+      "Name Error": 96,
+      "Loop Boundary Error": 24,
+      "Index Error": 42,
+      "Logic Error": 102,
+      "Type Error": 24,
+      "Function Error": 18,
+      "Value Error": 6
+    },
+    "predicted_counts": {
+      "Logic Error": 138,
+      "Condition Error": 14,
+      "Name Error": 86,
+      "Loop Boundary Error": 22,
+      "Index Error": 30,
+      "No Error": 1,
+      "Function Error": 3,
+      "N/A": 1,
+      "Type Error": 26,
+      "Conceptual Error": 5,
+      "Value Error": 4
+    },
+    "runtime_status_counts": {
+      "success": 150,
+      "name_error": 96,
+      "index_error": 42,
+      "type_error": 24,
+      "runtime_error": 12,
+      "value_error": 6
+    },
+    "comparison_counts": {
+      "mismatch": 150,
+      "execution_error": 180
+    },
+    "schema_status_counts": {
+      "repaired_schema": 306,
+      "valid_schema": 23,
+      "invalid_json": 1
+    },
+    "by_provider_prompt": {
+      "deepseek:baseline": {
+        "total": 55,
+        "category_accuracy": 0.4364,
+        "json_compliance_rate": 1.0,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 0.0
+      },
+      "deepseek:context_aware": {
+        "total": 55,
+        "category_accuracy": 0.8909,
+        "json_compliance_rate": 1.0,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 1.0
+      },
+      "deepseek:strict_scaffolded": {
+        "total": 55,
+        "category_accuracy": 0.8727,
+        "json_compliance_rate": 1.0,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 1.0
+      },
+      "kimi:baseline": {
+        "total": 55,
+        "category_accuracy": 0.6727,
+        "json_compliance_rate": 0.9818,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 0.0
+      },
+      "kimi:context_aware": {
+        "total": 55,
+        "category_accuracy": 0.9273,
+        "json_compliance_rate": 1.0,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 1.0
+      },
+      "kimi:strict_scaffolded": {
+        "total": 55,
+        "category_accuracy": 0.8727,
+        "json_compliance_rate": 1.0,
+        "solution_leakage_rate": 0.0,
+        "runtime_evidence_usage_rate": 1.0
+      }
+    },
+    "confusion_matrix": [
+      {
+        "ground_truth_category": "Condition Error",
+        "predicted_category": "Condition Error",
+        "count": 7
+      },
+      {
+        "ground_truth_category": "Condition Error",
+        "predicted_category": "Logic Error",
+        "count": 11
+      },
+      {
+        "ground_truth_category": "Function Error",
+        "predicted_category": "Conceptual Error",
+        "count": 4
+      },
+      {
+        "ground_truth_category": "Function Error",
+        "predicted_category": "Function Error",
+        "count": 2
+      },
+      {
+        "ground_truth_category": "Function Error",
+        "predicted_category": "Logic Error",
+        "count": 6
+      },
+      {
+        "ground_truth_category": "Function Error",
+        "predicted_category": "Type Error",
+        "count": 6
+      },
+      {
+        "ground_truth_category": "Index Error",
+        "predicted_category": "Index Error",
+        "count": 30
+      },
+      {
+        "ground_truth_category": "Index Error",
+        "predicted_category": "Logic Error",
+        "count": 11
+      },
+      {
+        "ground_truth_category": "Index Error",
+        "predicted_category": "Loop Boundary Error",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Logic Error",
+        "predicted_category": "Condition Error",
+        "count": 7
+      },
+      {
+        "ground_truth_category": "Logic Error",
+        "predicted_category": "Logic Error",
+        "count": 91
+      },
+      {
+        "ground_truth_category": "Logic Error",
+        "predicted_category": "Loop Boundary Error",
+        "count": 3
+      },
+      {
+        "ground_truth_category": "Logic Error",
+        "predicted_category": "No Error",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Loop Boundary Error",
+        "predicted_category": "Logic Error",
+        "count": 6
+      },
+      {
+        "ground_truth_category": "Loop Boundary Error",
+        "predicted_category": "Loop Boundary Error",
+        "count": 18
+      },
+      {
+        "ground_truth_category": "Name Error",
+        "predicted_category": "Function Error",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Name Error",
+        "predicted_category": "Logic Error",
+        "count": 9
+      },
+      {
+        "ground_truth_category": "Name Error",
+        "predicted_category": "N/A",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Name Error",
+        "predicted_category": "Name Error",
+        "count": 85
+      },
+      {
+        "ground_truth_category": "Type Error",
+        "predicted_category": "Conceptual Error",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Type Error",
+        "predicted_category": "Logic Error",
+        "count": 2
+      },
+      {
+        "ground_truth_category": "Type Error",
+        "predicted_category": "Name Error",
+        "count": 1
+      },
+      {
+        "ground_truth_category": "Type Error",
+        "predicted_category": "Type Error",
+        "count": 20
+      },
+      {
+        "ground_truth_category": "Value Error",
+        "predicted_category": "Logic Error",
+        "count": 2
+      },
+      {
+        "ground_truth_category": "Value Error",
+        "predicted_category": "Value Error",
+        "count": 4
+      }
+    ]
+  },
+  "human_review_metrics": {
+    "reviewed_count": 20,
+    "review_coverage_rate": 0.0606,
+    "average_helpfulness_score": 4.2,
+    "average_lecture_alignment_score": 4.2,
+    "average_actionability_score": 4.45,
+    "human_solution_leakage_rate": 0.0
+  },
+  "reference_review_note": "The reference review CSV is pre-filled from automatic signals only. It is a scoring aid and must not be reported as completed human review.",
+  "dry_run_caveat": false,
+  "artifact_paths": {
+    "summary_json": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_summary.json",
+    "summary_markdown": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_summary.md",
+    "results_json": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_results.json",
+    "manual_review_csv": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_manual_review_template.csv",
+    "reference_review_csv": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_reference_review_suggestions.csv",
+    "accuracy_chart_svg": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_accuracy_by_condition.svg",
+    "quality_rates_svg": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_quality_rates.svg",
+    "ground_truth_distribution_svg": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_ground_truth_distribution.svg",
+    "confusion_matrix_svg": "/Users/a77777/Desktop/fyp-code-feedback/evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_confusion_matrix.svg"
+  }
+}

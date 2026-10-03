@@ -1,0 +1,271 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}Student Profile | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}{% if is_own_profile %}My Learning Progress{% else %}Student Profile{% endif %}{% endblock %}
+{% block page_title %}{{ profile.user.username }}{% endblock %}
+{% block page_subtitle %}Topic-level skill mastery, repeated mistakes, and traceable attempt evidence.{% endblock %}
+
+{% block page_actions %}
+    {% if request.user.is_staff %}
+        <a href="{% url 'analytics_dashboard' %}" class="btn btn-outline-secondary">
+            <i data-lucide="arrow-left" class="icon-sm" aria-hidden="true"></i>
+            Back to Analytics
+        </a>
+        <a href="{% url 'history' %}?student={{ profile.user.id }}" class="btn btn-primary">
+            <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
+            Student History
+        </a>
+    {% else %}
+        <a href="{% url 'history' %}" class="btn btn-outline-secondary">
+            <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
+            My History
+        </a>
+        <a href="{% url 'student_submit' %}" class="btn btn-primary">
+            <i data-lucide="send" class="icon-sm" aria-hidden="true"></i>
+            Submit Code
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="row g-3 section-gap">
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Attempts</div>
+                <div class="metric-value">{{ profile.attempt_total }}</div>
+                <div class="small text-muted mt-2">Saved submissions</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Questions</div>
+                <div class="metric-value">{{ profile.question_total }}</div>
+                <div class="small text-muted mt-2">Distinct tasks attempted</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Solved Attempts</div>
+                <div class="metric-value">{{ profile.solved_total }}</div>
+                <div class="small text-muted mt-2">{{ profile.unresolved_total }} unresolved saved attempts</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Attempt Success Rate</div>
+                <div class="metric-value">{{ profile.solved_rate }}%</div>
+                <div class="small text-muted mt-2">{{ profile.solved_total }} solved / {{ profile.attempt_total }} attempts</div>
+            </div>
+        </div>
+    </div>
+
+    {% with mastery=profile.skill_mastery %}
+        <section class="panel section-gap">
+            <div class="panel-header d-flex flex-column flex-md-row justify-content-between gap-2 align-items-md-center">
+                <div>
+                    <div class="eyebrow">Topic-Level Progress</div>
+                    <h2 class="h5 mb-0">Skill Mastery Radar</h2>
+                </div>
+                <span class="badge badge-soft align-self-start">{{ mastery.evidence_topic_count }}/8 topics with evidence</span>
+            </div>
+            <div class="panel-body">
+                <div class="row g-4 align-items-start">
+                    <div class="col-lg-7">
+                        <div class="chart-wrap radar-wrap">
+                            <svg class="radar-chart" viewBox="0 0 520 390" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Topic mastery radar for {{ profile.user.username }}">
+                                {% for grid in mastery.grid_polygons %}
+                                    <polygon class="radar-grid" points="{{ grid.points }}"></polygon>
+                                {% endfor %}
+                                {% for topic in mastery.topics %}
+                                    <line class="radar-axis" x1="{{ mastery.center_x }}" y1="{{ mastery.center_y }}" x2="{{ topic.axis_x }}" y2="{{ topic.axis_y }}"></line>
+                                {% endfor %}
+                                <text class="radar-scale-label" x="268" y="162">25</text>
+                                <text class="radar-scale-label" x="268" y="130">50</text>
+                                <text class="radar-scale-label" x="268" y="98">75</text>
+                                <text class="radar-scale-label" x="268" y="66">100</text>
+                                <polygon class="radar-area" points="{{ mastery.polygon_points }}"></polygon>
+                                {% for topic in mastery.topics %}
+                                    <a href="{% url 'student_skill_detail' profile.user.id topic.id %}" class="radar-skill-link chart-node" data-tooltip="{{ topic.tooltip }}" aria-label="Open {{ topic.label }} evidence">
+                                        <circle class="radar-hit-area" cx="{{ topic.point_x }}" cy="{{ topic.point_y }}" r="13"></circle>
+                                        <circle class="radar-point{% if not topic.has_evidence %} radar-point-empty{% endif %}" cx="{{ topic.point_x }}" cy="{{ topic.point_y }}" r="5">
+                                            <title>{{ topic.tooltip }}</title>
+                                        </circle>
+                                        <text class="radar-topic-label" x="{{ topic.label_x }}" y="{{ topic.label_y }}" text-anchor="{{ topic.label_anchor }}">
+                                            {% for line in topic.label_lines %}
+                                                <tspan x="{{ topic.label_x }}" dy="{% if forloop.first %}0{% else %}13{% endif %}">{{ line }}</tspan>
+                                            {% endfor %}
+                                        </text>
+                                    </a>
+                                {% endfor %}
+                            </svg>
+                            <div class="chart-tooltip" hidden></div>
+                        </div>
+                        <p class="small text-muted text-center mb-0">Select a Topic label or point to inspect its time-based attempt evidence.</p>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="eyebrow mb-2">Current Topic Scores</div>
+                        {% for topic in mastery.topics %}
+                            <a href="{% url 'student_skill_detail' profile.user.id topic.id %}" class="skill-score-row text-decoration-none">
+                                <span>
+                                    <span class="fw-semibold d-block text-dark">{{ topic.label }}</span>
+                                    <span class="small text-muted">
+                                        {% if topic.has_evidence %}
+                                            {{ topic.question_count }} latest question score{{ topic.question_count|pluralize }} averaged · {{ topic.attempt_count }} attempts
+                                        {% else %}
+                                            No attempted tagged question
+                                        {% endif %}
+                                    </span>
+                                </span>
+                                {% if topic.has_evidence %}
+                                    <span class="badge badge-soft">{{ topic.score }}/100</span>
+                                {% else %}
+                                    <span class="badge text-bg-light">No evidence</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="score-note mt-4">
+                    <strong>How mastery is calculated:</strong>
+                    each attempt uses the prototype rubric: No Error = 100; output mismatch = 45;
+                    sample output matched but unresolved feedback remains = 40; unresolved classified attempt without decisive output evidence = 35;
+                    execution error = 20; no reliable evidence = 0.
+                    For each fixed Topic, the system takes the latest saved attempt score for every attempted question tagged with that Topic, then averages those question-level scores.
+                    A Topic with no attempted tagged question is shown as <strong>No evidence</strong>, not as a measured failure.
+                    This is a transparent prototype heuristic, not a standardised educational measurement.
+                </div>
+            </div>
+        </section>
+    {% endwith %}
+
+    <div class="row g-4 section-gap">
+        <div class="col-lg-4">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Mistake Pattern</div>
+                    <h2 class="h5 mb-0">Repeated Error Pattern</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in profile.repeated_errors %}
+                        <div class="stat-list-item d-flex justify-content-between gap-3">
+                            <span>{{ item.error_category }}</span>
+                            <span class="badge badge-warning-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No repeated unresolved error has been detected.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-4">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Weak Knowledge</div>
+                    <h2 class="h5 mb-0">Weak Concepts</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in profile.weak_concepts %}
+                        <div class="stat-list-item d-flex justify-content-between gap-3">
+                            <span>{{ item.concept_reference }}</span>
+                            <span class="badge badge-danger-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No weak concept has enough evidence yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-4">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Mastery Evidence</div>
+                    <h2 class="h5 mb-0">Mastered Concepts</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in profile.mastered_concepts %}
+                        <div class="stat-list-item d-flex justify-content-between gap-3">
+                            <span>{{ item.concept_reference }}</span>
+                            <span class="badge badge-success-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No mastered concept has been recorded yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Attempt Evidence</div>
+                    <h2 class="h5 mb-0">Recent Attempt Sequence</h2>
+                </div>
+                <div class="panel-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Attempt</th>
+                                    <th>Date</th>
+                                    <th>Question</th>
+                                    <th>Score</th>
+                                    <th>Category</th>
+                                    <th>Comparison</th>
+                                    <th>Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attempt in profile.trend %}
+                                    <tr>
+                                        <td>{{ attempt.label }}</td>
+                                        <td>{{ attempt.date }}</td>
+                                        <td>{{ attempt.question }}</td>
+                                        <td>{{ attempt.score }}</td>
+                                        <td>{{ attempt.category }}</td>
+                                        <td>{{ attempt.comparison }}</td>
+                                        <td>
+                                            <a href="{% url 'history_detail' attempt.record.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i data-lucide="eye" class="icon-sm" aria-hidden="true"></i>
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">No attempts have been saved.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-4">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Saved Feedback</div>
+                    <h2 class="h5 mb-0">Next-Step Suggestions</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in profile.recent_next_steps %}
+                        <div class="stat-list-item">
+                            <div class="d-flex justify-content-between gap-2 mb-1">
+                                <span class="fw-semibold">{{ item.question__title|default:"Manual test" }}</span>
+                                <span class="badge badge-warning-soft">{{ item.error_category }}</span>
+                            </div>
+                            <div class="small text-muted">{{ item.suggested_next_step }}</div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No unresolved next-step suggestions are currently saved.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}

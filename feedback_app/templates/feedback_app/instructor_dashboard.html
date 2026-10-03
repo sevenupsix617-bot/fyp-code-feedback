@@ -1,0 +1,225 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}Instructor Dashboard | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}Instructor Workspace{% endblock %}
+{% block page_title %}Instructor Dashboard{% endblock %}
+{% block page_subtitle %}Question bank management, evaluator workflow, and recent feedback evidence.{% endblock %}
+
+{% block page_actions %}
+    <a href="{% url 'admin:feedback_app_question_add' %}" class="btn btn-outline-primary">
+        <i data-lucide="plus" class="icon-sm" aria-hidden="true"></i>
+        Add Question
+    </a>
+    <a href="{% url 'admin:feedback_app_question_changelist' %}" class="btn btn-outline-primary">
+        <i data-lucide="list-checks" class="icon-sm" aria-hidden="true"></i>
+        Manage Questions
+    </a>
+    <a href="{% url 'experiment' %}" class="btn btn-primary">
+        <i data-lucide="flask-conical" class="icon-sm" aria-hidden="true"></i>
+        Experiment Interface
+    </a>
+    <a href="{% url 'evaluation_dashboard' %}" class="btn btn-outline-secondary">
+        <i data-lucide="bar-chart-3" class="icon-sm" aria-hidden="true"></i>
+        Evaluation
+    </a>
+{% endblock %}
+
+{% block content %}
+    <div class="row g-3 section-gap">
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Questions</div>
+                <div class="metric-value">{{ question_count }}</div>
+                <div class="small text-muted mt-2">{{ active_question_count }} active, {{ inactive_question_count }} inactive</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Submissions</div>
+                <div class="metric-value">{{ submission_count }}</div>
+                <div class="small text-muted mt-2">Student and evaluator records</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Demo Students</div>
+                <div class="metric-value">{{ student_count }}</div>
+                <div class="small text-muted mt-2">Non-staff active accounts</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="metric">
+                <div class="metric-label">Comparison Modes</div>
+                <div class="metric-value">{{ strict_question_count }}</div>
+                <div class="small text-muted mt-2">{{ normalized_question_count }} normalized, {{ strict_question_count }} strict</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 section-gap">
+        <div class="col-lg-5">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Literature-derived Taxonomy</div>
+                    <h2 class="h5 mb-0">Common PECI Error Categories</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in common_errors %}
+                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
+                            <span>{{ item.error_category }}</span>
+                            <span class="badge badge-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No new submissions have a PECI classification yet.</p>
+                    {% endfor %}
+                    <p class="small text-muted mt-3 mb-0">The page shows the exact category names from PECI Table 1. Source codes are stored internally only. Runtime exceptions and legacy Day 12 labels are stored separately.</p>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-3">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Question Defaults</div>
+                    <h2 class="h5 mb-0">Provider Defaults</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in provider_breakdown %}
+                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
+                            <span>{{ item.default_llm_provider }}</span>
+                            <span class="badge badge-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No question providers set.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-4">
+            <section class="panel h-100">
+                <div class="panel-header">
+                    <div class="eyebrow">Runtime Evidence</div>
+                    <h2 class="h5 mb-0">Output Comparison</h2>
+                </div>
+                <div class="panel-body">
+                    {% for item in output_breakdown %}
+                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
+                            <span>{{ item.output_comparison_status }}</span>
+                            <span class="badge badge-soft">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted mb-0">No output comparison records yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <section class="panel section-gap">
+        <div class="panel-header d-flex flex-column flex-md-row justify-content-between gap-2 align-items-md-center">
+            <div>
+                <div class="eyebrow">Question Bank</div>
+                <h2 class="h5 mb-0">Admin-Managed Teaching Tasks</h2>
+            </div>
+            <a href="{% url 'admin:feedback_app_question_changelist' %}" class="btn btn-sm btn-outline-primary">
+                <i data-lucide="external-link" class="icon-sm" aria-hidden="true"></i>
+                Open Question Admin
+            </a>
+        </div>
+        <div class="panel-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>Mode</th>
+                            <th>Provider</th>
+                            <th>Status</th>
+                            <th>Submissions</th>
+                            <th>Updated</th>
+                            <th>Manage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for question in questions %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ question.title }}</div>
+                                    <div class="small text-muted">{{ question.difficulty|default:"Difficulty not set" }} - {{ question.topic_label_list|join:", "|default:"No tags" }}</div>
+                                </td>
+                                <td><span class="badge badge-soft">{{ question.comparison_mode }}</span></td>
+                                <td>{{ question.default_llm_provider }}</td>
+                                <td>
+                                    {% if question.is_active %}
+                                        <span class="badge badge-success-soft">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ question.submission_total }}</td>
+                                <td>{{ question.updated_at|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'admin:feedback_app_question_change' question.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i data-lucide="pencil" class="icon-sm" aria-hidden="true"></i>
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No questions have been created.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header d-flex flex-column flex-md-row justify-content-between gap-2 align-items-md-center">
+            <div>
+                <div class="eyebrow">Evidence Log</div>
+                <h2 class="h5 mb-0">Recent Feedback Records</h2>
+            </div>
+            <a href="{% url 'history' %}" class="btn btn-sm btn-outline-secondary">
+                <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
+                Open Full History
+            </a>
+        </div>
+        <div class="panel-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Question</th>
+                            <th>User</th>
+                            <th>Error</th>
+                            <th>Comparison</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in recent_records %}
+                            <tr>
+                                <td>{{ record.question|default:"Manual test" }}</td>
+                                <td>{{ record.user|default:"Anonymous" }}</td>
+                                <td>{{ record.error_category|default:"N/A" }}</td>
+                                <td>{{ record.output_comparison_status|default:"N/A" }}</td>
+                                <td>
+                                    <a href="{% url 'history_detail' record.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i data-lucide="eye" class="icon-sm" aria-hidden="true"></i>
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No submissions yet.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

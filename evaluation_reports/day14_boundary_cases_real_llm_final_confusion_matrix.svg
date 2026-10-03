@@ -1,0 +1,485 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="932" viewBox="0 0 1000 932">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="32" fill="#1f2937" font-family="Arial" font-size="20" font-weight="700">Confusion Matrix</text>
+<text x="24" y="58" fill="#667085" font-family="Arial" font-size="13">Rows are ground truth; columns are predicted categories.</text>
+<text x="175" y="80" fill="#344054" font-family="Arial" font-size="12">Concep</text>
+<text x="227" y="80" fill="#344054" font-family="Arial" font-size="12">Cond</text>
+<text x="279" y="80" fill="#344054" font-family="Arial" font-size="12">Func</text>
+<text x="331" y="80" fill="#344054" font-family="Arial" font-size="12">Indent</text>
+<text x="383" y="80" fill="#344054" font-family="Arial" font-size="12">Index</text>
+<text x="435" y="80" fill="#344054" font-family="Arial" font-size="12">Input </text>
+<text x="487" y="80" fill="#344054" font-family="Arial" font-size="12">Logic</text>
+<text x="539" y="80" fill="#344054" font-family="Arial" font-size="12">Loop</text>
+<text x="591" y="80" fill="#344054" font-family="Arial" font-size="12">Module</text>
+<text x="643" y="80" fill="#344054" font-family="Arial" font-size="12">No Err</text>
+<text x="695" y="80" fill="#344054" font-family="Arial" font-size="12">Output</text>
+<text x="747" y="80" fill="#344054" font-family="Arial" font-size="12">Syntax</text>
+<text x="799" y="80" fill="#344054" font-family="Arial" font-size="12">Timeou</text>
+<text x="851" y="80" fill="#344054" font-family="Arial" font-size="12">Type</text>
+<text x="903" y="80" fill="#344054" font-family="Arial" font-size="12">Value</text>
+<text x="24" y="123" fill="#344054" font-family="Arial" font-size="12">Conceptual Error</text>
+<rect x="170" y="92" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.120"/>
+<text x="188" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="92" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="122" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="175" fill="#344054" font-family="Arial" font-size="12">Condition Error</text>
+<rect x="170" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="144" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="240" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="274" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="144" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="174" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="227" fill="#344054" font-family="Arial" font-size="12">Function Error</text>
+<rect x="170" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.627"/>
+<text x="188" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">4</text>
+<rect x="222" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="196" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.247"/>
+<text x="292" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="326" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="708" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="742" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="196" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="226" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="279" fill="#344054" font-family="Arial" font-size="12">Indentation Error</text>
+<rect x="170" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="248" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="344" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="378" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="248" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="278" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="331" fill="#344054" font-family="Arial" font-size="12">Index Error</text>
+<rect x="170" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="300" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.753"/>
+<text x="396" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">5</text>
+<rect x="430" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="500" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="534" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="300" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="330" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="383" fill="#344054" font-family="Arial" font-size="12">Input Error</text>
+<rect x="170" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="352" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.627"/>
+<text x="448" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">4</text>
+<rect x="482" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="656" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="690" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="708" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="742" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="352" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="382" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="435" fill="#344054" font-family="Arial" font-size="12">Logic Error</text>
+<rect x="170" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="404" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.120"/>
+<text x="500" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="404" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="434" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="487" fill="#344054" font-family="Arial" font-size="12">Loop Boundary Error</text>
+<rect x="170" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="456" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="552" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="586" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="456" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="486" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="539" fill="#344054" font-family="Arial" font-size="12">Module Import Error</text>
+<rect x="170" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="508" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="604" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="638" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="508" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="538" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="591" fill="#344054" font-family="Arial" font-size="12">No Error</text>
+<rect x="170" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="560" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.120"/>
+<text x="656" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="560" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="590" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="643" fill="#344054" font-family="Arial" font-size="12">Output Format Error</text>
+<rect x="170" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="612" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="708" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="742" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="612" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="642" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="695" fill="#344054" font-family="Arial" font-size="12">Syntax Error</text>
+<rect x="170" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="664" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="760" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="794" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="664" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="694" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="747" fill="#344054" font-family="Arial" font-size="12">Timeout</text>
+<rect x="170" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="500" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="534" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.247"/>
+<text x="552" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">1</text>
+<rect x="586" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="716" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.627"/>
+<text x="812" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">4</text>
+<rect x="846" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="716" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="746" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="799" fill="#344054" font-family="Arial" font-size="12">Type Error</text>
+<rect x="170" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="656" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="690" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="768" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.880"/>
+<text x="864" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">6</text>
+<rect x="898" y="768" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="916" y="798" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<text x="24" y="851" fill="#344054" font-family="Arial" font-size="12">Value Error</text>
+<rect x="170" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="188" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="222" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="240" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="274" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="292" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="326" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="344" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="378" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="396" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="430" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="448" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="482" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="500" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="534" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="552" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="586" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="604" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="638" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.373"/>
+<text x="656" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">2</text>
+<rect x="690" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="708" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="742" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="760" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="794" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="812" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="846" y="820" width="48" height="48" rx="6" fill="#b45309" fill-opacity="0.120"/>
+<text x="864" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">0</text>
+<rect x="898" y="820" width="48" height="48" rx="6" fill="#2563eb" fill-opacity="0.627"/>
+<text x="916" y="850" fill="#1f2937" font-family="Arial" font-size="13" font-weight="700">4</text>
+</svg>
