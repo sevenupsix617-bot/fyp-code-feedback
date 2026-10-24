@@ -11,6 +11,7 @@ from .taxonomy import (
     TAXONOMY_VERSION,
     error_classification_rules_prompt_block,
     error_taxonomy_prompt_block,
+    project_error_taxonomy_prompt_block,
     topic_labels,
     topic_taxonomy_prompt_block,
 )
@@ -150,7 +151,15 @@ Important rules:
 3. Give scaffolded hints that help the student reason about the bug.
 4. Use beginner-friendly language.
 5. Refer to the programming question and lecture objective when relevant.
-6. Classify with the literature-derived PECI A-X inventory below. Set
+6. Classify with the literature-derived PECI A-X inventory and the separate
+   researcher-defined project categories below. The four project categories
+   are not PECI labels and must never be returned as A-X codes.
+   When a condition-boundary, loop-count, general logical, or runtime-exception
+   error fits one of the project categories, prefer that specific category
+   instead of forcing the error into an A-X label.
+   Project categories:
+{project_error_taxonomy_prompt_block()}
+   Set
    classification_outcome to peci_error and select exactly one A-X code only
    when its definition directly fits. Do not invent, merge, or rename a code.
 7. Return ONLY valid JSON. Do not include markdown fences.
@@ -166,15 +175,18 @@ Important rules:
 12. If runtime evidence is useful, explicitly set uses_runtime_evidence to true.
 13. Keep feedback short enough for a beginner to act on.
 14. Do not include imports, function definitions, or multi-line corrected code unless they already appear in the student's submission.
-15. If the submitted code is supported as correct, set classification_outcome
+15. For a matching project-defined category, set classification_outcome to its
+    exact identifier (condition_error, loop_boundary_error, logical_error, or
+    runtime_error) and leave peci_error_code empty.
+16. If the submitted code is supported as correct, set classification_outcome
     to no_error and peci_error_code to an empty string.
-16. If a real mistake does not fit A-X, set classification_outcome to
-    outside_peci_scope and peci_error_code to an empty string. Keep the exact
-    exception or runtime status in the feedback instead of fabricating a code.
-17. Output a misconception field: one short sentence naming the student's most
+17. If a real mistake fits neither A-X nor the project categories, set
+    classification_outcome to outside_peci_scope. Use unknown only when the
+    available evidence is insufficient or conflicting. Keep peci_error_code empty.
+18. Output a misconception field: one short sentence naming the student's most
     likely misunderstanding, grounded in the code and runtime evidence. Use an
     empty string when classification_outcome is no_error or unknown.
-18. {JSON_STRING_ESCAPING_RULE}
+19. {JSON_STRING_ESCAPING_RULE}
 """
 
     prompt = f"""

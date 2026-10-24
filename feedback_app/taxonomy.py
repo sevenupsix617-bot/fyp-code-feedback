@@ -12,6 +12,7 @@ import re
 
 
 TAXONOMY_VERSION = "peci_taxonomy_v3_2026_09_17"
+PROJECT_ERROR_TAXONOMY_VERSION = "project_error_taxonomy_v1_2026_10_24"
 TAXONOMY_SOURCE = (
     "Cooke, Hawwash, and Smith (2019), Python for Engineers Concept Inventory "
     "(PECI), Table 1; supervisor review dated 2026-09-16."
@@ -142,11 +143,63 @@ PECI_ERROR_TAXONOMY = OrderedDict(
 )
 
 
+# Researcher-defined additions approved for the revised Refactory assessment.
+# These categories are distinct from the literature-derived PECI A-X labels.
+PROJECT_ERROR_TAXONOMY = OrderedDict(
+    [
+        (
+            "condition_error",
+            {
+                "label": "Condition Error",
+                "definition": (
+                    "A comparison or Boolean condition uses an incorrect operator or "
+                    "boundary (for example, < instead of <=), causing an executable "
+                    "program to select the wrong branch."
+                ),
+            },
+        ),
+        (
+            "loop_boundary_error",
+            {
+                "label": "Loop Boundary Error",
+                "definition": (
+                    "A loop starts, stops, or repeats an off-by-one number of times, "
+                    "causing an incorrect count or result."
+                ),
+            },
+        ),
+        (
+            "logical_error",
+            {
+                "label": "Logical error",
+                "definition": (
+                    "The program executes but its algorithm, condition, or state "
+                    "update produces a result inconsistent with the task. Use only "
+                    "when no more specific category applies."
+                ),
+            },
+        ),
+        (
+            "runtime_error",
+            {
+                "label": "Runtime error",
+                "definition": (
+                    "The program terminates with a runtime exception, such as "
+                    "IndexError, UnboundLocalError, TypeError, or ValueError, for "
+                    "which no PECI A-X category describes the primary error."
+                ),
+            },
+        ),
+    ]
+)
+
+
 CLASSIFICATION_OUTCOMES = OrderedDict(
     [
         ("peci_error", "PECI error identified"),
         ("no_error", "No Error"),
         ("outside_peci_scope", "Outside PECI Scope"),
+        *[(key, item["label"]) for key, item in PROJECT_ERROR_TAXONOMY.items()],
         ("unknown", "Unknown"),
     ]
 )
@@ -369,11 +422,13 @@ ERROR_TAXONOMY = LEGACY_ERROR_TAXONOMY
 
 
 ERROR_CLASSIFICATION_RULES = (
-    "Select peci_error only when one A-X definition directly describes the primary mistake; then return exactly one PECI code.",
+    "Select peci_error only when one A-X definition directly describes the primary mistake; then return exactly one PECI code. A-X codes remain literature-derived and must not be stretched to cover a different error type.",
     "Use deterministic runtime evidence to locate the defect, but do not convert an exception name into a PECI category unless the code pattern satisfies that category's definition.",
     "When several mistakes exist, choose the earliest root cause that prevents the intended program behaviour and explain the other evidence in the feedback.",
+    "Prefer condition_error for a wrong comparison/Boolean condition that selects the wrong branch, loop_boundary_error for an off-by-one loop start/stop/count, and logical_error only for an executable algorithm/state/condition defect with no more specific category.",
+    "Prefer runtime_error for a runtime exception such as IndexError, UnboundLocalError, TypeError, or ValueError when no A-X definition directly describes its primary cause.",
     "Use no_error only when the available task and runtime evidence supports correctness; one passing sample is not proof if another visible defect remains.",
-    "Use outside_peci_scope for a real mistake not represented by A-X, such as a timeout, an out-of-range index, an unsupported import, or a type/value failure with no matching PECI pattern.",
+    "Use outside_peci_scope only for a genuine error not represented by either A-X or the project-defined categories, such as a timeout or unsupported import when no more specific category applies.",
     "Use unknown only when the evidence is insufficient or conflicting. Never invent, merge, or rename an A-X category.",
 )
 
@@ -530,6 +585,13 @@ def error_taxonomy_prompt_block() -> str:
     lines = []
     for code, data in PECI_ERROR_TAXONOMY.items():
         lines.append(f'- {code} - {data["label"]}: {data["definition"]}')
+    return "\n".join(lines)
+
+
+def project_error_taxonomy_prompt_block() -> str:
+    lines = []
+    for outcome, data in PROJECT_ERROR_TAXONOMY.items():
+        lines.append(f'- {outcome} ({data["label"]}): {data["definition"]}')
     return "\n".join(lines)
 
 

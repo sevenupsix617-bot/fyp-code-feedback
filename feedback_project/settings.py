@@ -69,6 +69,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool(
     False,
 )
 SECURE_HSTS_PRELOAD = _env_bool('DJANGO_SECURE_HSTS_PRELOAD', False)
+CURRENT_STATUS_RECENT_ATTEMPTS = max(1, _env_int('CURRENT_STATUS_RECENT_ATTEMPTS', 5))
 
 
 # Application definition

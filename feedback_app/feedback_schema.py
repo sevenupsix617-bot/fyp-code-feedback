@@ -5,6 +5,7 @@ from .taxonomy import (
     CLASSIFICATION_OUTCOMES,
     ERROR_TAXONOMY,
     PECI_ERROR_TAXONOMY,
+    PROJECT_ERROR_TAXONOMY,
     TOPIC_TAXONOMY,
     canonicalize_peci_error_code,
     canonicalize_topic_reference,
@@ -12,13 +13,14 @@ from .taxonomy import (
     peci_error_label,
 )
 
-FEEDBACK_SCHEMA_VERSION = "feedback_schema_v3_peci"
+FEEDBACK_SCHEMA_VERSION = "feedback_schema_v4_revised_taxonomy"
 
 # Legacy v1/v2 categories remain available only for reproducing the completed
 # Day 12 evaluation. New feedback classification uses PECI_ERROR_CODES.
 ERROR_CATEGORIES = list(ERROR_TAXONOMY)
 PECI_ERROR_CODES = list(PECI_ERROR_TAXONOMY)
 CLASSIFICATION_OUTCOME_VALUES = list(CLASSIFICATION_OUTCOMES)
+PROJECT_ERROR_OUTCOMES = list(PROJECT_ERROR_TAXONOMY)
 
 FEEDBACK_LEVELS = ["Level 1", "Level 2", "Level 3"]
 CONFIDENCE_LEVELS = ["low", "medium", "high"]
@@ -62,7 +64,8 @@ FEEDBACK_JSON_SCHEMA = {
             "enum": CLASSIFICATION_OUTCOME_VALUES,
             "description": (
                 "Whether the result is one PECI error, no error, a genuine issue "
-                "outside the PECI A-X inventory, or unknown."
+                "outside the PECI A-X inventory, one of the project-defined error "
+                "categories, or unknown."
             ),
         },
         "peci_error_code": {
@@ -233,6 +236,8 @@ def canonicalize_classification_outcome(value: str) -> tuple[str, str | None]:
         "outside peci scope": "outside_peci_scope",
         "outside_peci_scope": "outside_peci_scope",
         "outside scope": "outside_peci_scope",
+        **{key.replace("_", " "): key for key in PROJECT_ERROR_OUTCOMES},
+        **{key: key for key in PROJECT_ERROR_OUTCOMES},
         "unknown": "unknown",
     }
     canonical = aliases.get(normalised)

@@ -4,9 +4,11 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.staticfiles import finders
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -18,8 +20,13 @@ from .ai_response import (
     parse_ai_feedback_with_metadata,
 )
 from .analytics import (
+    _allocate_partial_credit,
     _attempt_score,
+    _attempt_score_details,
+    _ewma,
     build_class_analytics,
+    build_current_status,
+    build_question_difficulty,
     build_skill_mastery,
     build_skill_timeline,
     build_student_profile,
@@ -30,10 +37,13 @@ from .feedback_schema import (
     PECI_ERROR_CODES,
     REQUIRED_FIELDS,
     canonicalize_error_category,
+    canonicalize_classification_outcome,
+    validate_feedback_payload,
 )
 from .forms import QuestionAdminForm
 from .views import _generate_feedback_record
 from .code_runner import run_python_code
+from .code_review import build_code_review
 from .evaluation_dataset import (
     DEFAULT_REFACTORY_DATA_DIR,
     HAND_CRAFTED_BOUNDARY_RECORDS,
@@ -49,7 +59,7 @@ from .evaluation_analysis import export_day12_artifacts, import_manual_review_sc
 from .evaluation_runner import _is_retryable_llm_error, run_evaluation_dataset
 from .llm_client import estimate_llm_cost, get_llm_model_name
 from .models import CodeFeedbackRecord, EvaluationResult, EvaluationRun, Question
-from .peci_ax_evaluation import build_peci_ground_truth_prompt
+from .peci_ax_evaluation import _build_peci_summary, build_peci_ground_truth_prompt
 from .output_comparison import (
     COMPARISON_MODE_NORMALIZED,
     COMPARISON_MODE_STRICT,
@@ -64,12 +74,35 @@ from .prompt_builder import (
 from .taxonomy import (
     ERROR_TAXONOMY,
     PECI_ERROR_TAXONOMY,
+    PROJECT_ERROR_TAXONOMY,
     TOPIC_TAXONOMY,
     canonicalize_topic_reference,
     parse_topic_tags,
     serialize_topic_tags,
     topic_labels,
 )
+
+
+class CodeReviewTests(SimpleTestCase):
+    def test_syntax_colours_preserve_and_escape_student_code(self):
+        review = build_code_review('for i in range(2):\n    print("<script>", i)\n')
+
+        self.assertEqual(len(review["lines"]), 2)
+        self.assertIn('class="review-token-keyword">for</span>', review["lines"][0]["html"])
+        self.assertIn('&lt;script&gt;', review["lines"][1]["html"])
+        self.assertNotIn('<script>', review["lines"][1]["html"])
+        self.assertIsNone(review["runtime_line"])
+
+    def test_traceback_marks_only_a_line_in_submitted_code(self):
+        code = "value = 1\nprint(missing_name)\n"
+        stderr = 'File "/tmp/fyp_sandbox/submission.py", line 2, in <module>\nNameError'
+
+        review = build_code_review(code, "name_error", stderr)
+        self.assertEqual(review["runtime_line"], 2)
+        self.assertFalse(review["lines"][0]["runtime_error"])
+        self.assertTrue(review["lines"][1]["runtime_error"])
+        self.assertIsNone(build_code_review(code, "success", stderr)["runtime_line"])
+        self.assertIsNone(build_code_review(code, "name_error", stderr.replace("line 2", "line 9"))["runtime_line"])
 
 
 class CodeRunnerTests(SimpleTestCase):
@@ -257,6 +290,94 @@ class HumanDefinedTaxonomyTests(SimpleTestCase):
         self.assertEqual(PECI_ERROR_CODES, list(PECI_ERROR_TAXONOMY))
         self.assertEqual(len(PECI_ERROR_CODES), 24)
         self.assertIn("assignment", PECI_ERROR_TAXONOMY["P"]["definition"].lower())
+
+    def test_project_taxonomy_adds_four_distinct_outcomes(self):
+        self.assertEqual(
+            list(PROJECT_ERROR_TAXONOMY),
+            ["condition_error", "loop_boundary_error", "logical_error", "runtime_error"],
+        )
+        for outcome in PROJECT_ERROR_TAXONOMY:
+            with self.subTest(outcome=outcome):
+                self.assertEqual(canonicalize_classification_outcome(outcome)[0], outcome)
+                self.assertIn(outcome, FEEDBACK_JSON_SCHEMA["properties"]["classification_outcome"]["enum"])
+
+    def test_project_outcomes_validate_without_a_peci_code(self):
+        for outcome, category in PROJECT_ERROR_TAXONOMY.items():
+            with self.subTest(outcome=outcome):
+                payload = {
+                    "classification_outcome": outcome,
+                    "peci_error_code": "",
+                    "feedback_level": "Level 2",
+                    "concept_reference": "Iteration and Range",
+                    "misconception": "The loop boundary is incorrect.",
+                    "feedback": "Check which values the loop visits.",
+                    "does_reveal_solution": False,
+                    "uses_runtime_evidence": True,
+                    "suggested_next_step": "Trace the loop values.",
+                    "confidence": "medium",
+                }
+                normalized, status, _notes = validate_feedback_payload(payload)
+                self.assertEqual(status, "valid_schema")
+                self.assertEqual(normalized["classification_outcome"], outcome)
+                self.assertEqual(normalized["error_category"], category["label"])
+                self.assertEqual(normalized["peci_error_code"], "")
+
+    def test_revised_summary_reports_category_accuracy_and_separate_failures(self):
+        results = [
+            {
+                "provider": "deepseek",
+                "ground_truth_key": "logical_error",
+                "predicted_key": "logical_error",
+                "classification_match": True,
+                "solution_leakage_flag": False,
+                "ai_error": "",
+                "api_error": "",
+                "feedback_valid": True,
+                "llm_latency_ms": 100,
+            },
+            {
+                "provider": "kimi",
+                "ground_truth_key": "logical_error",
+                "predicted_key": "invalid_output",
+                "classification_match": False,
+                "solution_leakage_flag": False,
+                "ai_error": "invalid JSON",
+                "api_error": "",
+                "feedback_valid": False,
+                "llm_latency_ms": 200,
+            },
+            {
+                "provider": "kimi",
+                "ground_truth_key": "runtime_error",
+                "predicted_key": "invalid_output",
+                "classification_match": False,
+                "solution_leakage_flag": False,
+                "ai_error": "provider unavailable",
+                "api_error": "provider unavailable",
+                "feedback_valid": False,
+                "llm_latency_ms": 0,
+            },
+        ]
+        summary = _build_peci_summary(results, sample_count=2)
+
+        self.assertEqual(summary["per_category"]["logical_error"]["results"], 2)
+        self.assertEqual(summary["per_category"]["logical_error"]["accuracy"], 0.5)
+        self.assertEqual(summary["invalid_response_count"], 1)
+        self.assertEqual(summary["api_failure_count"], 1)
+        self.assertEqual(summary["per_provider"]["kimi"]["invalid_response_count"], 1)
+        self.assertEqual(summary["per_provider"]["kimi"]["api_failure_count"], 1)
+
+    def test_revised_prompt_distinguishes_project_categories_from_peci(self):
+        prompt = build_feedback_prompt(
+            problem_statement="Count values using a loop.",
+            student_code="while k >= 0: pass",
+            execution_result={"execution_status": "success", "stdout": ""},
+            output_comparison_status="mismatch",
+        )
+        for outcome in PROJECT_ERROR_TAXONOMY:
+            self.assertIn(outcome, prompt)
+        self.assertIn("not PECI labels", prompt)
+        self.assertIn("prefer that specific category", prompt)
 
     def test_concept_reference_is_normalised_to_the_fixed_topic_set(self):
         self.assertEqual(
@@ -527,9 +648,11 @@ class EvaluationDatasetTests(SimpleTestCase):
 
 
 class EvaluationRunnerTests(TestCase):
-    def test_legacy_dataset_real_run_is_blocked_under_peci_v3(self):
+    @patch("feedback_app.evaluation_runner.call_llm_with_metadata")
+    def test_legacy_dataset_real_run_is_blocked_under_peci_v3(self, mock_llm):
         with self.assertRaisesMessage(CommandError, "legacy v1/v2 ground-truth labels"):
             call_command("run_evaluation_dataset", run_llm=True, limit=1)
+        mock_llm.assert_not_called()
 
     def test_quota_errors_are_not_retried(self):
         self.assertFalse(
@@ -719,6 +842,32 @@ class PeciAxEvaluationTests(TestCase):
                 )
         return path
 
+    def test_revised_confirmed_ground_truth_has_all_55_final_labels(self):
+        path = Path(__file__).resolve().parents[1] / "evaluation_reports" / "peci_ax_ground_truth_confirmed.csv"
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+
+        counts = {}
+        for row in rows:
+            counts[row["confirmed_outcome"]] = counts.get(row["confirmed_outcome"], 0) + 1
+            if row["confirmed_outcome"] == "peci_error":
+                self.assertIn(row["confirmed_peci_code"], PECI_ERROR_CODES)
+            else:
+                self.assertEqual(row["confirmed_peci_code"], "")
+
+        self.assertEqual(len(rows), 55)
+        self.assertEqual(
+            counts,
+            {
+                "peci_error": 30,
+                "condition_error": 1,
+                "loop_boundary_error": 1,
+                "logical_error": 13,
+                "runtime_error": 10,
+            },
+        )
+        self.assertFalse(any(row["confirmed_outcome"] == "outside_peci_scope" for row in rows))
+
     def _peci_feedback_response(self):
         return {
             "content": json.dumps(
@@ -755,6 +904,8 @@ class PeciAxEvaluationTests(TestCase):
         prompt = build_peci_ground_truth_prompt(sample)
 
         self.assertIn("PECI A-X error inventory", prompt)
+        self.assertIn("Project-defined categories", prompt)
+        self.assertIn("condition_error", prompt)
         self.assertIn("- A - Invalid names", prompt)
         self.assertIn('"actual_output": "0\\n"', prompt)
         self.assertIn('"output_comparison_status": "mismatch"', prompt)
@@ -898,9 +1049,9 @@ class PeciAxEvaluationTests(TestCase):
                 stdout=io.StringIO(),
             )
 
-            summary_path = Path(temp_dir) / "peci_ax_evaluation_summary.json"
-            markdown_path = Path(temp_dir) / "peci_ax_evaluation_summary.md"
-            matrix_path = Path(temp_dir) / "peci_ax_evaluation_confusion_matrix.csv"
+            summary_path = Path(temp_dir) / "peci_ax_evaluation_summary_revised_v2.json"
+            markdown_path = Path(temp_dir) / "peci_ax_evaluation_summary_revised_v2.md"
+            matrix_path = Path(temp_dir) / "peci_ax_evaluation_confusion_matrix_revised_v2.csv"
             self.assertTrue(summary_path.exists())
             self.assertTrue(markdown_path.exists())
             self.assertTrue(matrix_path.exists())
@@ -913,6 +1064,8 @@ class PeciAxEvaluationTests(TestCase):
             self.assertEqual(summary["per_provider"]["deepseek"]["accuracy"], 1.0)
             self.assertEqual(summary["per_provider"]["kimi"]["accuracy"], 1.0)
             self.assertEqual(summary["ai_error_count"], 0)
+            self.assertEqual(summary["api_failure_count"], 0)
+            self.assertEqual(summary["invalid_response_count"], 0)
             self.assertEqual(summary["json_repair_attempt_count"], 1)
             self.assertEqual(summary["json_repair_success_count"], 1)
             self.assertEqual(
@@ -928,7 +1081,7 @@ class PeciAxEvaluationTests(TestCase):
                 1,
             )
             self.assertIn(
-                "researcher-confirmed AI-assisted A-X annotation",
+                "researcher-confirmed revised taxonomy labels",
                 markdown_path.read_text(encoding="utf-8"),
             )
             self.assertIn(
@@ -1449,6 +1602,36 @@ class FeedbackGenerationResilienceTests(TestCase):
         self.assertIn("Missing API key", record.schema_validation_notes)
 
 
+class AttemptScoringTests(SimpleTestCase):
+    def test_attempt_score_details_covers_each_rubric_branch(self):
+        cases = (
+            ({"solved": True, "execution_status": "syntax_error"}, 100, "Solved attempt"),
+            ({"execution_status": "syntax_error", "output_comparison_status": "exact_match"}, 20, "Execution did not finish"),
+            ({"output_comparison_status": "mismatch", "error_category": "Issue"}, 45, "did not match"),
+            ({"output_comparison_status": "exact_match", "error_category": "Issue"}, 75, "Exact sample output"),
+            ({"output_comparison_status": "normalized_match", "error_category": "Issue"}, 65, "Normalized sample output"),
+            ({"error_category": "Issue"}, 35, "Unresolved issue classified"),
+            ({}, 0, "No reliable classification"),
+        )
+        for fields, expected_score, expected_reason in cases:
+            with self.subTest(score=expected_score):
+                record = SimpleNamespace(
+                    solved=False,
+                    execution_status="",
+                    output_comparison_status="",
+                    error_category="",
+                )
+                record.__dict__.update(fields)
+                details = _attempt_score_details(record)
+                self.assertEqual(details["score"], expected_score)
+                self.assertIn(expected_reason, details["reason"])
+
+    def test_ewma_empty_single_and_multiple_values(self):
+        self.assertIsNone(_ewma([], 0.5))
+        self.assertEqual(_ewma([75], 0.5), 75)
+        self.assertEqual(_ewma([20, 45, 100], 0.5), 66.25)
+
+
 class LearningAnalyticsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -1470,7 +1653,7 @@ class LearningAnalyticsTests(TestCase):
         self.assertTrue(profile["recent_next_steps"])
         self.assertEqual(profile["skill_mastery"]["evidence_topic_count"], 3)
 
-    def test_skill_mastery_uses_latest_attempt_per_question_and_fixed_topics(self):
+    def test_skill_mastery_uses_all_attempts_and_fixed_topics(self):
         User = get_user_model()
         student = User.objects.get(username="student1")
 
@@ -1478,14 +1661,174 @@ class LearningAnalyticsTests(TestCase):
         topics = {topic["id"]: topic for topic in mastery["topics"]}
 
         self.assertEqual(len(topics), 8)
-        self.assertEqual(topics["variables_assignment"]["score"], 100)
+        self.assertEqual(topics["variables_assignment"]["score"], 78)
         self.assertEqual(topics["variables_assignment"]["question_count"], 2)
         self.assertEqual(topics["variables_assignment"]["attempt_count"], 10)
-        self.assertEqual(topics["iteration_range"]["score"], 100)
-        self.assertEqual(topics["strings_io"]["score"], 100)
+        self.assertGreater(topics["iteration_range"]["score"], 0)
+        self.assertLess(topics["iteration_range"]["score"], 100)
+        self.assertGreater(topics["strings_io"]["score"], 0)
+        self.assertLess(topics["strings_io"]["score"], 100)
         self.assertFalse(topics["functions_returns"]["has_evidence"])
         self.assertEqual(topics["functions_returns"]["score"], 0)
         self.assertEqual(len(mastery["grid_polygons"]), 4)
+
+    def test_skill_mastery_ema_rewards_recent_improvement_on_one_question(self):
+        student = get_user_model().objects.create_user(username="ema_student")
+        question = Question.objects.create(
+            title="EMA practice question",
+            problem_statement="Practise iteration.",
+            topic_tags="iteration_range",
+        )
+        for execution_status, comparison_status, solved in (
+            ("syntax_error", "execution_error", False),
+            ("success", "mismatch", False),
+            ("success", "exact_match", True),
+        ):
+            CodeFeedbackRecord.objects.create(
+                user=student,
+                question=question,
+                problem_statement=question.problem_statement,
+                student_code="print(1)",
+                execution_status=execution_status,
+                output_comparison_status=comparison_status,
+                solved=solved,
+            )
+
+        topics = {topic["id"]: topic for topic in build_skill_mastery(student)["topics"]}
+        iteration = topics["iteration_range"]
+        self.assertEqual(iteration["score"], 66)  # EMA: 20 -> 32.5 -> 66.25.
+        self.assertEqual(iteration["attempt_count"], 3)
+        self.assertEqual(iteration["question_count"], 1)
+        self.assertTrue(iteration["has_evidence"])
+        self.assertFalse(topics["functions_returns"]["has_evidence"])
+        self.assertEqual(topics["functions_returns"]["score"], 0)
+
+    def test_partial_credit_formula_equal_fallback_and_score_cap(self):
+        credits = _allocate_partial_credit(
+            50,
+            {"a": 100, "b": 100, "c": 20},
+        )
+        self.assertAlmostEqual(credits["a"], 150 * 100 / 220)
+        self.assertAlmostEqual(credits["b"], 150 * 100 / 220)
+        self.assertAlmostEqual(credits["c"], 150 * 20 / 220)
+        self.assertAlmostEqual(sum(credits.values()), 150)
+
+        self.assertEqual(
+            _allocate_partial_credit(45, {"a": 100, "b": 0, "c": 20}),
+            {"a": 45.0, "b": 45.0, "c": 45.0},
+        )
+        self.assertEqual(
+            _allocate_partial_credit(100, {"a": 100, "b": 100, "c": 20}),
+            {"a": 100.0, "b": 100.0, "c": 100.0},
+        )
+        self.assertEqual(
+            _allocate_partial_credit(0, {"a": 100, "b": 20}),
+            {"a": 0.0, "b": 0.0},
+        )
+
+    def test_weighted_topic_credit_is_shared_by_radar_status_and_timeline(self):
+        student = get_user_model().objects.create_user(username="weighted_student")
+        topics = ("variables_assignment", "iteration_range", "strings_io")
+        for index, topic_id in enumerate(topics):
+            question = Question.objects.create(
+                title=f"Single topic {index}",
+                problem_statement="Practise one topic.",
+                topic_tags=topic_id,
+            )
+            CodeFeedbackRecord.objects.create(
+                user=student,
+                question=question,
+                problem_statement=question.problem_statement,
+                student_code="print(1)",
+                execution_status="syntax_error" if index == 2 else "success",
+                output_comparison_status="execution_error" if index == 2 else "exact_match",
+                solved=index != 2,
+            )
+
+        combined = Question.objects.create(
+            title="Three topics",
+            problem_statement="Practise three topics.",
+            topic_tags=",".join(topics),
+        )
+        CodeFeedbackRecord.objects.create(
+            user=student,
+            question=combined,
+            problem_statement=combined.problem_statement,
+            student_code="print(1)",
+            execution_status="success",
+            output_comparison_status="mismatch",
+            solved=False,
+        )
+
+        status = build_current_status(student, recent_limit=1)
+        recent = {topic["id"]: topic for topic in status["topics"]}
+        self.assertEqual(recent["variables_assignment"]["recent_score"], 55)
+        self.assertEqual(recent["iteration_range"]["recent_score"], 55)
+        self.assertEqual(recent["strings_io"]["recent_score"], 25)
+        self.assertEqual(status["priorities"][0]["id"], "strings_io")
+
+        radar = {
+            topic["id"]: topic for topic in build_skill_mastery(student)["topics"]
+        }
+        self.assertEqual(radar["variables_assignment"]["score"], 78)
+        self.assertEqual(radar["iteration_range"]["score"], 78)
+        self.assertEqual(radar["strings_io"]["score"], 22)
+
+        timeline = build_skill_timeline(student, "strings_io")["timeline"]
+        self.assertEqual(timeline[-1]["score"], 45)
+        self.assertEqual(timeline[-1]["topic_credit"], 25)
+
+    @override_settings(CURRENT_STATUS_RECENT_ATTEMPTS=3)
+    def test_current_status_uses_recent_attempts_per_topic_and_preserves_no_evidence(self):
+        student = get_user_model().objects.create_user(username="recent_status_student")
+        combined = Question.objects.create(
+            title="Recent status combined",
+            problem_statement="Use variables and a loop.",
+            topic_tags="variables_assignment,iteration_range",
+        )
+        loop_only = Question.objects.create(
+            title="Recent status loop",
+            problem_statement="Use a loop.",
+            topic_tags="iteration_range",
+        )
+        for question, execution_status, comparison_status, solved in (
+            (combined, "syntax_error", "execution_error", False),
+            (combined, "success", "mismatch", False),
+            (combined, "success", "exact_match", True),
+            (loop_only, "success", "mismatch", False),
+            (loop_only, "success", "mismatch", False),
+        ):
+            CodeFeedbackRecord.objects.create(
+                user=student,
+                question=question,
+                problem_statement=question.problem_statement,
+                student_code="print(1)",
+                execution_status=execution_status,
+                output_comparison_status=comparison_status,
+                solved=solved,
+            )
+
+        status = build_current_status(student)
+        topics = {topic["id"]: topic for topic in status["topics"]}
+        loop = topics["iteration_range"]
+        variables = topics["variables_assignment"]
+
+        self.assertEqual(status["recent_limit"], 3)
+        self.assertEqual(loop["recent_score"], 63)
+        self.assertEqual(loop["practice_count"], 5)
+        self.assertEqual(loop["question_count"], 2)
+        self.assertEqual(loop["error_rate"], 67)
+        self.assertEqual(variables["recent_score"], 58)
+        self.assertEqual(variables["practice_count"], 3)
+        self.assertEqual(status["priorities"][0]["id"], "variables_assignment")
+        self.assertIn("2 of the latest 3 attempts", status["priorities"][0]["reason"])
+        self.assertIsNone(topics["functions_returns"]["recent_score"])
+        self.assertIsNone(topics["functions_returns"]["error_rate"])
+
+        shorter = build_current_status(student, recent_limit=2)
+        shorter_topics = {topic["id"]: topic for topic in shorter["topics"]}
+        self.assertEqual(shorter_topics["iteration_range"]["recent_score"], 45)
+        self.assertEqual(shorter_topics["iteration_range"]["practice_count"], 5)
 
     def test_skill_timeline_exposes_traceable_attempt_evidence(self):
         User = get_user_model()
@@ -1508,7 +1851,7 @@ class LearningAnalyticsTests(TestCase):
 
         self.assertEqual(record.output_comparison_status, "exact_match")
         self.assertEqual(record.error_category, "Division and modulo")
-        self.assertEqual(_attempt_score(record), 40)
+        self.assertEqual(_attempt_score(record), 75)
 
     def test_class_analytics_separates_statistics_from_saved_suggestions(self):
         context = build_class_analytics()
@@ -1523,6 +1866,81 @@ class LearningAnalyticsTests(TestCase):
         self.assertTrue(context["concept_weakness"])
         self.assertTrue(context["instructional_recommendations"])
         self.assertTrue(context["saved_next_steps"])
+
+    def test_question_difficulty_counts_first_solve_per_run_and_sorts(self):
+        User = get_user_model()
+        students = [
+            User.objects.get(username="student1"),
+            User.objects.get(username="student2"),
+            User.objects.create_user(username="difficulty_student3"),
+            User.objects.create_user(username="difficulty_student4"),
+        ]
+        hard = Question.objects.create(title="Difficulty hard", problem_statement="Hard")
+        easy = Question.objects.create(title="Difficulty popular", problem_statement="Easy")
+        pending = Question.objects.create(title="Difficulty pending", problem_statement="Pending")
+        untouched = Question.objects.create(title="Difficulty untouched", problem_statement="Untouched")
+
+        def save_attempt(question, user, trajectory, status, comparison, solved=False):
+            return CodeFeedbackRecord.objects.create(
+                user=user,
+                question=question,
+                trajectory_id=trajectory,
+                problem_statement=question.problem_statement,
+                student_code="print(1)",
+                execution_status=status,
+                output_comparison_status=comparison,
+                solved=solved,
+            )
+
+        for index in range(4):
+            save_attempt(
+                hard, students[0], "hard-solved",
+                "name_error" if index == 0 else "success",
+                "execution_error" if index == 0 else "exact_match" if index == 3 else "mismatch",
+                solved=index == 3,
+            )
+            save_attempt(hard, students[1], "hard-open", "success", "mismatch")
+        for index, student in enumerate(students):
+            attempts = 1 if index < 2 else 2
+            for position in range(attempts):
+                solved = position == attempts - 1
+                save_attempt(
+                    easy, student, f"easy-{index}", "success",
+                    "exact_match" if solved else "mismatch", solved=solved,
+                )
+        save_attempt(pending, students[0], "pending", "syntax_error", "execution_error")
+        save_attempt(
+            untouched, User.objects.get(username="instructor"), "staff-only",
+            "success", "exact_match", solved=True,
+        )
+
+        relevant_ids = {hard.id, easy.id, pending.id, untouched.id}
+        rows = [row for row in build_question_difficulty() if row["id"] in relevant_ids]
+        self.assertEqual(
+            [row["id"] for row in rows],
+            [hard.id, easy.id, pending.id, untouched.id],
+        )
+        by_id = {row["id"]: row for row in rows}
+        self.assertEqual(by_id[hard.id]["attempt_total"], 8)
+        self.assertEqual(by_id[hard.id]["average_attempts_to_solve"], 4.0)
+        self.assertEqual(by_id[hard.id]["unresolved_attempt_total"], 7)
+        self.assertEqual(by_id[hard.id]["unresolved_run_total"], 1)
+        self.assertEqual(by_id[hard.id]["solve_rate"], 50)
+        self.assertEqual(by_id[hard.id]["solved_student_total"], 1)
+        self.assertEqual(by_id[hard.id]["mismatch_total"], 6)
+        self.assertEqual(by_id[hard.id]["runtime_error_total"], 1)
+        self.assertEqual(by_id[hard.id]["difficulty_label"], "Difficult")
+        self.assertEqual(by_id[easy.id]["attempt_total"], 6)
+        self.assertEqual(by_id[easy.id]["average_attempts_to_solve"], 1.5)
+        self.assertEqual(by_id[easy.id]["solve_rate"], 100)
+        self.assertEqual(by_id[easy.id]["solved_student_total"], 4)
+        self.assertEqual(by_id[easy.id]["difficulty_label"], "Popular, easier")
+        self.assertIsNone(by_id[pending.id]["average_attempts_to_solve"])
+        self.assertEqual(by_id[pending.id]["other_execution_failure_total"], 1)
+        self.assertEqual(by_id[pending.id]["difficulty_label"], "Limited evidence")
+        self.assertEqual(by_id[untouched.id]["attempt_total"], 0)
+        self.assertIsNone(by_id[untouched.id]["solve_rate"])
+        self.assertEqual(by_id[untouched.id]["difficulty_label"], "Unattempted")
 
 
 @override_settings(ALLOWED_HOSTS=["testserver"])
@@ -1697,56 +2115,42 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertContains(response, "Weak Concepts")
         self.assertContains(response, "Instructional Suggestions")
         self.assertContains(response, "Skill Mastery Overview")
-        self.assertContains(response, "Hard Questions")
+        self.assertContains(response, "Each Topic uses an EMA (alpha=0.5) of all baseline-weighted attempt credits.")
+        self.assertNotContains(response, "Each Topic averages baseline-weighted credits from the latest attempt")
+        self.assertContains(response, "Question Difficulty Overview")
+        self.assertContains(response, "Average attempts to solve")
         self.assertContains(response, "Student Activity")
         self.assertContains(response, "Division and modulo")
 
-    def test_evaluation_dashboard_is_staff_only(self):
-        self.client.login(username="student1", password="student123")
-        response = self.client.get("/evaluation/")
-        self.assertEqual(response.status_code, 403)
-
-        EvaluationRun.objects.create(
-            name="Dashboard artifact test",
-            dataset_size=2,
-            providers=["deepseek"],
-            prompt_versions=[PROMPT_STRICT_SCAFFOLDED],
-            summary={
-                "total_results": 2,
-                "category_accuracy": 1.0,
-                "json_compliance_rate": 1.0,
-                "solution_leakage_rate": 0.0,
-                "runtime_evidence_usage_rate": 1.0,
-                "average_latency_ms": 0,
-                "day12_analysis": {
-                    "human_review_metrics": {
-                        "review_coverage_rate": 0.5,
-                        "average_helpfulness_score": 4.0,
-                        "average_actionability_score": 5.0,
-                    },
-                    "artifact_paths": {
-                        "summary_markdown": "/tmp/run_1_day12_summary.md",
-                        "manual_review_csv": "/tmp/run_1_manual_review_template.csv",
-                    },
-                },
-            },
-        )
-
-        self.client.logout()
+    def test_analytics_profiles_scroll_when_more_students_join(self):
+        get_user_model().objects.create_user(username="student3")
         self.client.login(username="instructor", password="instructor123")
-        response = self.client.get("/evaluation/")
-        self.assertContains(response, "Batch Evaluation Results")
-        self.assertContains(response, "Systematic Evaluation")
-        self.assertContains(response, "Historical taxonomy notice")
-        self.assertContains(response, "not PECI Table 1 categories")
-        self.assertContains(response, "Key findings for demo/report discussion")
-        self.assertContains(response, "Runtime evidence is the main improvement")
-        self.assertContains(response, "Kimi was more accurate but slower and more costly")
-        self.assertContains(response, "Function vs Logic boundaries need refinement")
-        self.assertContains(response, "Database Run Detail")
-        self.assertContains(response, "AI-Assisted Review Coverage")
-        self.assertContains(response, "Report Artifacts")
-        self.assertContains(response, "manual_review_csv")
+
+        response = self.client.get("/analytics/")
+
+        self.assertContains(response, 'id="student-profile-track"')
+        self.assertContains(response, 'id="student-carousel-next"')
+        self.assertContains(response, 'id="student-carousel-prev"')
+        self.assertEqual(
+            response.content.decode().count('class="student-profile-slide"'),
+            3,
+        )
+        self.assertContains(response, "student3")
+
+    def test_evaluation_page_removed_but_experiment_remains(self):
+        for username, password in (
+            ("student1", "student123"),
+            ("instructor", "instructor123"),
+        ):
+            self.client.login(username=username, password=password)
+            self.assertEqual(self.client.get("/evaluation/").status_code, 404)
+            self.client.logout()
+
+        self.client.login(username="instructor", password="instructor123")
+        dashboard = self.client.get("/instructor/")
+        self.assertNotContains(dashboard, 'href="/evaluation/"')
+        self.assertContains(dashboard, 'href="/experiment/"')
+        self.assertContains(self.client.get("/experiment/"), "Prompt Version")
 
     def test_student_profile_routes_use_role_boundaries(self):
         User = get_user_model()
@@ -1759,6 +2163,7 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertContains(response, "How mastery is calculated")
         self.assertContains(response, "Repeated Error Pattern")
         self.assertContains(response, "Next-Step Suggestions")
+        self.assertContains(response, 'href="/profile/current/"')
 
         response = self.client.get(f"/analytics/students/{student1.id}/")
         self.assertEqual(response.status_code, 403)
@@ -1770,6 +2175,50 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertContains(response, "Skill Mastery Radar")
         self.assertContains(response, "Weak Concepts")
         self.assertContains(response, "Mastered Concepts")
+        self.assertContains(response, f'href="/analytics/students/{student1.id}/current/"')
+
+    @patch("feedback_app.views.call_llm_with_metadata")
+    def test_current_status_routes_topic_practice_and_permissions(self, mock_llm):
+        student1 = get_user_model().objects.get(username="student1")
+        student2 = get_user_model().objects.get(username="student2")
+        self.client.login(username="student1", password="student123")
+
+        response = self.client.get("/profile/current/")
+        self.assertContains(response, "Current Knowledge Status")
+        self.assertContains(response, "Latest 5 attempts per topic")
+        self.assertContains(response, "not a standardised assessment")
+        self.assertContains(response, "Historical Progress")
+        self.assertContains(response, "Recent score")
+        self.assertContains(response, "Unresolved")
+        self.assertContains(response, "No evidence")
+        self.assertContains(response, "/student/?topic=iteration_range")
+        self.assertEqual(response.context["status"]["user"], student1)
+        self.assertEqual(
+            self.client.get(f"/analytics/students/{student2.id}/current/").status_code,
+            403,
+        )
+
+        practice = self.client.get("/student/?topic=iteration_range")
+        self.assertContains(practice, "Practising Iteration and Range")
+        self.assertTrue(practice.context["questions"])
+        self.assertTrue(
+            all("iteration_range" in question.topic_tags for question in practice.context["questions"])
+        )
+        self.assertEqual(
+            practice.context["form"].initial["question"].pk,
+            practice.context["questions"][0].pk,
+        )
+        self.assertEqual(self.client.get("/student/?topic=unknown_topic").status_code, 404)
+        mock_llm.assert_not_called()
+
+        self.client.logout()
+        self.client.login(username="instructor", password="instructor123")
+        response = self.client.get(f"/analytics/students/{student1.id}/current/")
+        self.assertContains(response, "Current Knowledge Status")
+        self.assertContains(response, f'href="/analytics/students/{student1.id}/"')
+        self.assertNotContains(response, "/student/?topic=iteration_range")
+        self.assertEqual(self.client.get("/profile/current/").status_code, 302)
+        mock_llm.assert_not_called()
 
     def test_skill_detail_routes_enforce_student_boundaries(self):
         User = get_user_model()
@@ -1819,6 +2268,95 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertGreater(len(records), 0)
         self.assertTrue(all(record.user.username == "student1" for record in records))
+
+    def test_history_status_badges_and_reference(self):
+        student = get_user_model().objects.get(username="student1")
+        question = Question.objects.get(title="Sum from 1 to 10")
+        for execution_status, comparison_status in (
+            ("success", "exact_match"),
+            ("success", "normalized_match"),
+            ("success", "mismatch"),
+            ("syntax_error", "execution_error"),
+            ("timeout", "timeout"),
+        ):
+            CodeFeedbackRecord.objects.create(
+                user=student,
+                question=question,
+                problem_statement=question.problem_statement,
+                student_code=f"# {execution_status} {comparison_status}",
+                execution_status=execution_status,
+                output_comparison_status=comparison_status,
+            )
+        self.client.force_login(student)
+
+        response = self.client.get("/history/")
+        self.assertContains(response, "Error Category")
+        self.assertNotContains(response, "AI Category")
+        for status in ("success", "exact_match", "normalized_match"):
+            self.assertContains(response, f'<span class="badge badge-success-soft">{status}</span>', html=True)
+        for status in ("syntax_error", "mismatch", "execution_error"):
+            self.assertContains(response, f'<span class="badge badge-danger-soft">{status}</span>', html=True)
+        self.assertContains(response, '<span class="badge badge-warning-soft">timeout</span>', html=True)
+        for status in (
+            "success", "syntax_error", "indentation_error", "name_error", "type_error",
+            "value_error", "index_error", "key_error", "eof_error", "module_not_found",
+            "import_error", "runtime_error", "timeout", "empty_code", "system_error",
+            "exact_match", "normalized_match", "mismatch", "execution_error", "not_applicable",
+        ):
+            self.assertContains(response, status)
+
+    def test_student_history_groups_attempts_and_filters_to_one_trajectory(self):
+        self.client.login(username="student1", password="student123")
+
+        response = self.client.get("/history/")
+        sum_group = next(
+            group for group in response.context["history_groups"]
+            if group["latest_record"].question.title == "Sum from 1 to 10"
+        )
+
+        self.assertEqual(sum_group["attempt_count"], 5)
+        self.assertEqual(
+            [record.trajectory_attempt_number for record in sum_group["records"]],
+            [1, 2, 3, 4, 5],
+        )
+        self.assertTrue(sum_group["is_solved"])
+        self.assertContains(response, "5 attempts")
+
+        filtered = self.client.get(
+            "/history/", {"attempt": sum_group["latest_record"].pk}
+        )
+        self.assertEqual(len(filtered.context["history_groups"]), 1)
+        self.assertEqual(filtered.context["history_groups"][0]["attempt_count"], 5)
+        self.assertContains(filtered, '<details class="history-group" open>', html=False)
+
+        other_record = CodeFeedbackRecord.objects.filter(
+            user__username="student2"
+        ).first()
+        inaccessible = self.client.get("/history/", {"attempt": other_record.pk})
+        self.assertEqual(inaccessible.status_code, 404)
+
+    def test_history_keeps_legacy_records_without_trajectory_separate(self):
+        student = get_user_model().objects.get(username="student1")
+        question = Question.objects.get(title="Sum from 1 to 10")
+        legacy_ids = [
+            CodeFeedbackRecord.objects.create(
+                user=student,
+                question=question,
+                problem_statement=question.problem_statement,
+                student_code=f"print({number})",
+            ).pk
+            for number in (1, 2)
+        ]
+        self.client.force_login(student)
+
+        response = self.client.get("/history/")
+        legacy_groups = [
+            group for group in response.context["history_groups"]
+            if group["latest_record"].pk in legacy_ids
+        ]
+
+        self.assertEqual(len(legacy_groups), 2)
+        self.assertTrue(all(group["attempt_count"] == 1 for group in legacy_groups))
 
     def test_student_cannot_view_another_students_record_detail(self):
         other_record = CodeFeedbackRecord.objects.filter(user__username="student2").first()
@@ -1886,6 +2424,22 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertEqual(record.output_comparison_status, "mismatch")
         self.assertContains(response, "Retry this question")
         self.assertContains(response, "Jump to another question")
+        self.assertContains(response, f"Attempt {record.trajectory_attempt_number}")
+        self.assertContains(
+            response,
+            f'<h1 class="page-title">{question.title} · Attempt {record.trajectory_attempt_number}</h1>',
+            html=True,
+        )
+        self.assertContains(response, "View attempt history")
+        self.assertContains(response, f"?attempt={record.pk}")
+        self.assertContains(response, 'data-ui-language="zh"')
+        self.assertContains(response, 'feedback_app/js/ui-i18n.js')
+        self.assertIsNotNone(finders.find("feedback_app/js/ui-i18n.js"))
+        self.assertContains(response, 'id="submitted-code-heading"')
+        self.assertContains(response, '<span class="review-line-number" aria-hidden="true">1</span>', html=True)
+        self.assertContains(response, 'class="review-token-builtin">print</span>')
+        self.assertLess(html.index('id="submitted-code-heading"'), html.index('class="eyebrow">Feedback Summary'))
+        self.assertLess(html.index('id="review-evidence-heading"'), html.index('class="eyebrow">Feedback Summary'))
         self.assertNotIn("Prompt:", html)
         self.assertNotIn("Schema status", html)
         self.assertNotIn("DeepSeek", html)
@@ -1894,6 +2448,22 @@ class RoleAndStudentPortalTests(TestCase):
         self.assertNotIn("AI self-reported confidence", html)
 
         detail_response = self.client.get(f"/history/{record.id}/")
+        self.assertContains(
+            detail_response,
+            f'<h1 class="page-title">{question.title} · Attempt {record.trajectory_attempt_number}</h1>',
+            html=True,
+        )
+        self.assertContains(detail_response, "View attempt history")
+        self.assertContains(detail_response, f"?attempt={record.pk}")
+        self.assertEqual(detail_response.context["code_lines"], ["print(sum(range(1, 10)))"])
+        self.assertContains(detail_response, 'feedback_app/css/review-layout.css')
+        self.assertIsNotNone(finders.find("feedback_app/css/review-layout.css"))
+        self.assertContains(detail_response, 'class="review-code" translate="no" data-no-translate')
+        self.assertContains(detail_response, '<span class="review-line-number" aria-hidden="true">1</span>', html=True)
+        self.assertLess(
+            detail_response.content.decode().index('id="submitted-code-heading"'),
+            detail_response.content.decode().index('class="eyebrow">Feedback Summary'),
+        )
         self.assertNotContains(detail_response, "Confidence")
         self.assertNotContains(detail_response, "AI self-reported confidence")
 

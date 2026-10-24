@@ -41,6 +41,7 @@ from .taxonomy import (
     canonicalize_peci_error_code,
     error_classification_rules_prompt_block,
     error_taxonomy_prompt_block,
+    project_error_taxonomy_prompt_block,
 )
 
 
@@ -48,9 +49,9 @@ REFACTORY_SAMPLE_ORIGIN = "real_student_submission_refactory"
 EXPECTED_REFACTORY_SAMPLE_COUNT = 55
 DEFAULT_PROPOSAL_FILENAME = "peci_ax_ground_truth_proposals.csv"
 DEFAULT_CONFIRMED_FILENAME = "peci_ax_ground_truth_confirmed.csv"
-DEFAULT_SUMMARY_JSON_FILENAME = "peci_ax_evaluation_summary.json"
-DEFAULT_SUMMARY_MARKDOWN_FILENAME = "peci_ax_evaluation_summary.md"
-DEFAULT_CONFUSION_MATRIX_FILENAME = "peci_ax_evaluation_confusion_matrix.csv"
+DEFAULT_SUMMARY_JSON_FILENAME = "peci_ax_evaluation_summary_revised_v2.json"
+DEFAULT_SUMMARY_MARKDOWN_FILENAME = "peci_ax_evaluation_summary_revised_v2.md"
+DEFAULT_CONFUSION_MATRIX_FILENAME = "peci_ax_evaluation_confusion_matrix_revised_v2.csv"
 PECI_EVALUATION_PROVIDERS = ["deepseek", "kimi"]
 
 PROPOSAL_COLUMNS = [
@@ -99,10 +100,13 @@ def build_peci_ground_truth_prompt(sample):
     }
     return f"""You are proposing an annotation for researcher review. This is not final ground truth.
 
-Classify the primary issue in this beginner Python submission using only the fixed PECI A-X inventory below. Do not invent, merge, or rename categories. The legacy FYP category is intentionally withheld because it is not a valid mapping to PECI A-X.
+Classify the primary issue in this beginner Python submission using the PECI A-X inventory and the separate researcher-defined project categories below. The project categories are not PECI labels. Prefer a project category when its definition directly fits instead of forcing the error into A-X.
 
 PECI A-X error inventory:
 {error_taxonomy_prompt_block()}
+
+Project-defined categories:
+{project_error_taxonomy_prompt_block()}
 
 Classification rules:
 {error_classification_rules_prompt_block()}
@@ -115,7 +119,7 @@ Stored runtime evidence:
 
 Return JSON only, with exactly these fields:
 {{
-  "classification_outcome": "peci_error|no_error|outside_peci_scope|unknown",
+  "classification_outcome": "peci_error|condition_error|loop_boundary_error|logical_error|runtime_error|no_error|outside_peci_scope|unknown",
   "peci_error_code": "A-X or empty",
   "rationale": "one sentence grounded in the code and runtime evidence"
 }}
@@ -316,6 +320,22 @@ def _classification_key(outcome, code):
     return outcome or "invalid_output"
 
 
+def _category_accuracy(results):
+    grouped = defaultdict(list)
+    for item in results:
+        grouped[item["ground_truth_key"]].append(item)
+    return {
+        category: {
+            "results": len(items),
+            "correct": sum(bool(item["classification_match"]) for item in items),
+            "accuracy": _rate(
+                sum(bool(item["classification_match"]) for item in items), len(items)
+            ),
+        }
+        for category, items in sorted(grouped.items())
+    }
+
+
 def _rate(numerator, denominator):
     return round(numerator / denominator, 4) if denominator else None
 
@@ -346,6 +366,11 @@ def _build_peci_summary(results, sample_count):
                 len(group),
             ),
             "ai_error_count": sum(1 for item in group if item.get("ai_error")),
+            "api_failure_count": sum(1 for item in group if item.get("api_error")),
+            "invalid_response_count": sum(
+                1 for item in group
+                if not item.get("feedback_valid") and not item.get("api_error")
+            ),
             "json_repair_attempt_count": sum(
                 1 for item in group if item.get("json_repair_attempted")
             ),
@@ -374,8 +399,8 @@ def _build_peci_summary(results, sample_count):
         for item in results
     )
     return {
-        "evaluation_name": "PECI A-X independent strict-scaffolded evaluation",
-        "ground_truth_source": "researcher-confirmed AI-assisted A-X annotation",
+        "evaluation_name": "Revised taxonomy strict-scaffolded evaluation",
+        "ground_truth_source": "researcher-confirmed revised taxonomy annotation",
         "scope_note": (
             "This evaluation uses only strict_scaffolded and is separate from the "
             "Day 12 legacy-taxonomy three-prompt evaluation."
@@ -386,7 +411,13 @@ def _build_peci_summary(results, sample_count):
         "total_results": total,
         "correct_results": correct,
         "overall_accuracy": _rate(correct, total),
+        "per_category": _category_accuracy(results),
         "ai_error_count": sum(1 for item in results if item.get("ai_error")),
+        "api_failure_count": sum(1 for item in results if item.get("api_error")),
+        "invalid_response_count": sum(
+            1 for item in results
+            if not item.get("feedback_valid") and not item.get("api_error")
+        ),
         "json_repair_attempt_count": sum(
             1 for item in results if item.get("json_repair_attempted")
         ),
@@ -407,7 +438,8 @@ def _build_peci_summary(results, sample_count):
 
 def _ordered_matrix_labels(labels):
     peci_codes = list(PECI_ERROR_TAXONOMY)
-    special_order = ["no_error", "outside_peci_scope", "unknown", "invalid_output"]
+    project_categories = ["condition_error", "loop_boundary_error", "logical_error", "runtime_error"]
+    special_order = project_categories + ["no_error", "outside_peci_scope", "unknown", "invalid_output"]
     label_set = set(labels)
     return [label for label in peci_codes + special_order if label in label_set]
 
@@ -431,14 +463,14 @@ def _write_confusion_matrix_csv(path, results):
 
 def _render_peci_markdown(summary, truth_labels, predicted_labels, counter):
     lines = [
-        "# PECI A-X Independent Evaluation",
+        "# Revised Taxonomy Strict-Scaffolded Evaluation",
         "",
         "## Scope and Ground Truth",
         "",
-        "- Ground truth source: researcher-confirmed AI-assisted A-X annotation.",
+        "- Ground truth source: researcher-confirmed revised taxonomy labels.",
         "- Scope: 55 Refactory samples x 2 providers x 1 strict_scaffolded prompt.",
-        "- This is separate from the Day 12 legacy-taxonomy three-prompt evaluation; the 77.88% Day 12 figure must not be reused as an A-X result.",
-        "- Proposed labels were produced by an LLM, but only the researcher-confirmed outcome and A-X code were used as ground truth.",
+        "- The label space contains the 24 PECI A-X categories and four researcher-defined project categories. Project categories are not PECI labels.",
+        "- This is separate from both the Day 12 legacy-taxonomy evaluation and the earlier frozen A-X evaluation; their accuracies are not results for this revised label space.",
         "",
         "## Metrics",
         "",
@@ -446,18 +478,21 @@ def _render_peci_markdown(summary, truth_labels, predicted_labels, counter):
         f"- Total model outputs: {summary['total_results']}",
         f"- Overall accuracy: {summary['overall_accuracy']}",
         f"- AI/API error count: {summary['ai_error_count']}",
+        f"- Provider/API failures: {summary['api_failure_count']}",
+        f"- Invalid or unparseable responses after repair: {summary['invalid_response_count']}",
         f"- JSON repair retries: {summary['json_repair_attempt_count']}",
         f"- Successful JSON repairs: {summary['json_repair_success_count']}",
         f"- Solution leakage rate: {summary['solution_leakage_rate']}",
         "",
-        "| Provider | Results | Correct | Accuracy | AI errors | Repair retries | Repaired | Leakage rate | Average latency ms | Estimated cost |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Provider | Results | Correct | Accuracy | API failures | Invalid responses | Repair retries | Repaired | Leakage rate | Average latency ms | Estimated cost |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for provider in PECI_EVALUATION_PROVIDERS:
         item = summary["per_provider"][provider]
         lines.append(
             f"| {provider} | {item['results']} | {item['correct']} | "
-            f"{item['accuracy']} | {item['ai_error_count']} | "
+            f"{item['accuracy']} | {item['api_failure_count']} | "
+            f"{item['invalid_response_count']} | "
             f"{item['json_repair_attempt_count']} | "
             f"{item['json_repair_success_count']} | "
             f"{item['solution_leakage_rate']} | {item['average_latency_ms']} | "
@@ -469,7 +504,7 @@ def _render_peci_markdown(summary, truth_labels, predicted_labels, counter):
             "",
             "## Confusion Matrix",
             "",
-            "Rows are researcher-confirmed ground-truth A-X labels; columns are predicted A-X labels or explicit non-PECI outcomes.",
+            "Rows are researcher-confirmed labels; columns are predicted PECI codes or explicit project/non-PECI outcomes.",
             "",
             "| Ground truth \\ Predicted | " + " | ".join(predicted_labels) + " |",
             "| --- | " + " | ".join("---:" for _ in predicted_labels) + " |",
@@ -478,6 +513,17 @@ def _render_peci_markdown(summary, truth_labels, predicted_labels, counter):
     for truth in truth_labels:
         values = [str(counter[(truth, predicted)]) for predicted in predicted_labels]
         lines.append(f"| {truth} | " + " | ".join(values) + " |")
+    lines.extend([
+        "",
+        "## Accuracy by Ground-truth Category",
+        "",
+        "| Category | Results | Correct | Accuracy |",
+        "| --- | ---: | ---: | ---: |",
+    ])
+    for category, values in summary["per_category"].items():
+        lines.append(
+            f"| {category} | {values['results']} | {values['correct']} | {values['accuracy']} |"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -498,7 +544,7 @@ def run_peci_ax_evaluation(
     provider_last_call_at = {}
 
     evaluation_run = EvaluationRun.objects.create(
-        name="PECI A-X strict-scaffolded independent evaluation",
+        name="Revised taxonomy strict-scaffolded evaluation",
         dataset_name=metadata.get("dataset_name", "Refactory"),
         dataset_path=str(dataset_path),
         dataset_size=len(samples),
@@ -506,7 +552,7 @@ def run_peci_ax_evaluation(
         prompt_versions=[PROMPT_STRICT_SCAFFOLDED],
         run_mode=EvaluationRun.RUN_MODE_LLM,
         notes=(
-            "Ground truth: researcher-confirmed AI-assisted A-X annotation. "
+            "Ground truth: researcher-confirmed revised taxonomy annotation. "
             "Strict-scaffolded only; separate from the Day 12 legacy-taxonomy run."
         ),
     )
@@ -605,7 +651,8 @@ def run_peci_ax_evaluation(
                 and predicted_code == truth["peci_error_code"]
             )
             leakage = detect_solution_leakage(stored_raw_response, feedback_json)
-            ai_error = ai_result.get("error") or parsed["error"] or ""
+            api_error = ai_result.get("error") or ""
+            ai_error = api_error or parsed["error"] or ""
 
             database_result = EvaluationResult.objects.create(
                 evaluation_run=evaluation_run,
@@ -667,6 +714,8 @@ def run_peci_ax_evaluation(
                     "classification_match": classification_match,
                     "solution_leakage_flag": leakage,
                     "ai_error": ai_error,
+                    "api_error": api_error,
+                    "feedback_valid": feedback_json is not None,
                     "json_repair_attempted": json_repair_attempted,
                     "json_repair_succeeded": json_repair_succeeded,
                     "llm_latency_ms": latency_ms,

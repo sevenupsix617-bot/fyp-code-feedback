@@ -7,6 +7,10 @@
 
 {% block page_actions %}
     {% if request.user.is_staff %}
+        <a href="{% url 'student_current_status' profile.user.id %}" class="btn btn-outline-primary">
+            <i data-lucide="target" class="icon-sm" aria-hidden="true"></i>
+            Current Status
+        </a>
         <a href="{% url 'analytics_dashboard' %}" class="btn btn-outline-secondary">
             <i data-lucide="arrow-left" class="icon-sm" aria-hidden="true"></i>
             Back to Analytics
@@ -16,6 +20,10 @@
             Student History
         </a>
     {% else %}
+        <a href="{% url 'my_current_status' %}" class="btn btn-outline-primary">
+            <i data-lucide="target" class="icon-sm" aria-hidden="true"></i>
+            Current Status
+        </a>
         <a href="{% url 'history' %}" class="btn btn-outline-secondary">
             <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
             My History
@@ -111,7 +119,7 @@
                                     <span class="fw-semibold d-block text-dark">{{ topic.label }}</span>
                                     <span class="small text-muted">
                                         {% if topic.has_evidence %}
-                                            {{ topic.question_count }} latest question score{{ topic.question_count|pluralize }} averaged · {{ topic.attempt_count }} attempts
+                                            {{ topic.question_count }} attempted question{{ topic.question_count|pluralize }} · EMA of {{ topic.attempt_count }} weighted attempt{{ topic.attempt_count|pluralize }}
                                         {% else %}
                                             No attempted tagged question
                                         {% endif %}
@@ -129,12 +137,14 @@
 
                 <div class="score-note mt-4">
                     <strong>How mastery is calculated:</strong>
-                    each attempt uses the prototype rubric: No Error = 100; output mismatch = 45;
-                    sample output matched but unresolved feedback remains = 40; unresolved classified attempt without decisive output evidence = 35;
-                    execution error = 20; no reliable evidence = 0.
-                    For each fixed Topic, the system takes the latest saved attempt score for every attempted question tagged with that Topic, then averages those question-level scores.
+                    each attempt uses a heuristic rubric: solved = 100; exact output match but unresolved = 75;
+                    normalized output match but unresolved = 65; output mismatch = 45;
+                    classified issue without decisive output evidence = 35; unsuccessful execution = 20;
+                    no reliable scoring signal = 0.
+                    Multi-Topic marks are attributed using baseline Topic levels, with equal shares when a baseline is zero and a 100-point cap.
+                    The radar applies an exponential moving average (EMA, &alpha;=0.5) to every attributed attempt in time order: recent attempts have more weight, so earlier errors gradually fade.
                     A Topic with no attempted tagged question is shown as <strong>No evidence</strong>, not as a measured failure.
-                    This is a transparent prototype heuristic, not a standardised educational measurement.
+                    This is a prototype heuristic, not a standardised measurement of knowledge.
                 </div>
             </div>
         </section>

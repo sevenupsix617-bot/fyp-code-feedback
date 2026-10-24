@@ -25,6 +25,18 @@
     {% endif %}
 {% endblock %}
 
+{% block extra_head %}
+    <style>
+        .history-group + .history-group { border-top: 1px solid var(--line); }
+        .history-group > summary { cursor: pointer; list-style: none; padding: 1rem 1.25rem; }
+        .history-group > summary::-webkit-details-marker { display: none; }
+        .history-group > summary:hover { background: var(--surface-soft); }
+        .history-group .history-chevron { transition: transform 0.2s ease; }
+        .history-group[open] .history-chevron { transform: rotate(180deg); }
+        .history-group .table-responsive { border-top: 1px solid var(--line); }
+    </style>
+{% endblock %}
+
 {% block content %}
     {% if request.user.is_staff %}
         <form method="get" class="panel section-gap">
@@ -64,86 +76,114 @@
     {% endif %}
 
     <section class="panel">
-        <div class="panel-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th scope="col">Submitted At</th>
-                            {% if request.user.is_staff %}
-                                <th scope="col">Student</th>
-                            {% endif %}
-                            <th scope="col">Question</th>
-                            <th scope="col">AI Category</th>
-                            <th scope="col">Runtime</th>
-                            <th scope="col">Output</th>
-                            <th scope="col">Code Preview</th>
-                            <th scope="col">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in records %}
-                            <tr>
-                                <td>{{ record.created_at|date:"Y-m-d H:i" }}</td>
-                                {% if request.user.is_staff %}
-                                    <td>{{ record.user.username|default:"anonymous" }}</td>
-                                {% endif %}
-                                <td>
-                                    {% if record.question %}
-                                        {{ record.question.title }}
-                                    {% else %}
-                                        <span class="text-muted">Experiment</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if record.error_category == 'No Error' %}
-                                        <span class="badge badge-success-soft">{{ record.error_category }}</span>
-                                    {% elif record.error_category %}
-                                        <span class="badge badge-danger-soft">{{ record.error_category }}</span>
-                                    {% else %}
-                                        <span class="text-muted">N/A</span>
-                                    {% endif %}
-                                    <div class="small text-muted">{{ record.feedback_level|default:"Level not recorded" }}</div>
-                                </td>
-                                <td>
-                                    {% if record.execution_status == 'success' %}
-                                        <span class="badge badge-success-soft">success</span>
-                                    {% else %}
-                                        <span class="badge badge-warning-soft">{{ record.execution_status|default:"not run" }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if record.output_comparison_status %}
-                                        <span class="badge badge-soft">{{ record.output_comparison_status }}</span>
-                                    {% else %}
-                                        <span class="text-muted">N/A</span>
-                                    {% endif %}
-                                    {% if request.user.is_staff %}
-                                        <div class="small text-muted">{{ record.comparison_mode|default:"normalized" }}</div>
-                                    {% endif %}
-                                </td>
-                                <td style="min-width: 260px;">
-                                    <pre class="code-block code-block-light"><code>{{ record.student_code }}</code></pre>
-                                </td>
-                                <td>
-                                    <a href="{% url 'history_detail' record.id %}" class="btn btn-sm btn-outline-primary">
-                                        <i data-lucide="eye" class="icon-sm" aria-hidden="true"></i>
-                                        View
-                                    </a>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                {% if request.user.is_staff %}
-                                    <td colspan="8" class="text-center py-4 text-muted">No submissions yet.</td>
+        {% for group in history_groups %}
+            <details class="history-group" {% if selected_attempt_id %}open{% endif %}>
+                <summary>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <div class="fw-semibold">
+                                {% if group.latest_record.question %}
+                                    {{ group.latest_record.question.title }}
                                 {% else %}
-                                    <td colspan="7" class="text-center py-4 text-muted">No submissions yet.</td>
+                                    Experiment
                                 {% endif %}
+                            </div>
+                            <div class="small text-muted">
+                                {% if request.user.is_staff %}{{ group.latest_record.user.username|default:"anonymous" }} | {% endif %}
+                                Latest submission {{ group.latest_record.created_at|date:"Y-m-d H:i" }}
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge badge-soft">{{ group.attempt_count }} attempt{{ group.attempt_count|pluralize }}</span>
+                            {% if group.latest_record.question %}
+                                {% if group.is_solved %}
+                                    <span class="badge badge-success-soft">Solved</span>
+                                {% else %}
+                                    <span class="badge badge-warning-soft">In progress</span>
+                                {% endif %}
+                            {% endif %}
+                            <i data-lucide="chevron-down" class="icon-sm history-chevron" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </summary>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Attempt</th>
+                                <th scope="col">Submitted At</th>
+                                <th scope="col">Error Category</th>
+                                <th scope="col">Runtime <a href="#history-status-reference" aria-label="Runtime status values" class="small text-decoration-none">?</a></th>
+                                <th scope="col">Output <a href="#history-status-reference" aria-label="Output comparison status values" class="small text-decoration-none">?</a></th>
+                                <th scope="col">Code Preview</th>
+                                <th scope="col">Action</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {% for record in group.records %}
+                                <tr>
+                                    <td>{{ record.trajectory_attempt_number|default:"-" }}</td>
+                                    <td>{{ record.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        {% if record.error_category == 'No Error' %}
+                                            <span class="badge badge-success-soft">{{ record.error_category }}</span>
+                                        {% elif record.error_category %}
+                                            <span class="badge badge-danger-soft">{{ record.error_category }}</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                        <div class="small text-muted">{{ record.feedback_level|default:"Level not recorded" }}</div>
+                                    </td>
+                                    <td>
+                                        {% if record.execution_status == 'success' %}
+                                            <span class="badge badge-success-soft">success</span>
+                                        {% elif record.execution_status == 'timeout' or record.execution_status == 'empty_code' or not record.execution_status %}
+                                            <span class="badge badge-warning-soft">{{ record.execution_status|default:"not run" }}</span>
+                                        {% else %}
+                                            <span class="badge badge-danger-soft">{{ record.execution_status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.output_comparison_status == 'exact_match' or record.output_comparison_status == 'normalized_match' %}
+                                            <span class="badge badge-success-soft">{{ record.output_comparison_status }}</span>
+                                        {% elif record.output_comparison_status == 'mismatch' or record.output_comparison_status == 'execution_error' %}
+                                            <span class="badge badge-danger-soft">{{ record.output_comparison_status }}</span>
+                                        {% elif record.output_comparison_status == 'timeout' %}
+                                            <span class="badge badge-warning-soft">timeout</span>
+                                        {% elif record.output_comparison_status == 'not_applicable' %}
+                                            <span class="badge badge-soft">not_applicable</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                        {% if request.user.is_staff %}
+                                            <div class="small text-muted">{{ record.comparison_mode|default:"normalized" }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="min-width: 260px;">
+                                        <pre class="code-block code-block-light"><code>{{ record.student_code }}</code></pre>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'history_detail' record.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i data-lucide="eye" class="icon-sm" aria-hidden="true"></i>
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        {% empty %}
+            <div class="panel-body text-center text-muted">No submissions yet.</div>
+        {% endfor %}
+    </section>
+    <section id="history-status-reference" class="panel section-gap" aria-labelledby="history-status-reference-title">
+        <div class="panel-body small">
+            <h2 id="history-status-reference-title" class="h6">Status reference</h2>
+            <p class="mb-2"><strong>Runtime:</strong> success, syntax_error, indentation_error, name_error, type_error, value_error, index_error, key_error, eof_error, module_not_found, import_error, runtime_error, timeout, empty_code, system_error.</p>
+            <p class="mb-2"><strong>Output:</strong> exact_match, normalized_match, mismatch, execution_error, timeout, not_applicable.</p>
+            <p class="mb-0 text-muted">Runtime success means the code ran; it does not mean the answer is correct. Output match compares the configured sample, not every possible input.</p>
         </div>
     </section>
 {% endblock %}

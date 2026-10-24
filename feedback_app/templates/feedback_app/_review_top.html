@@ -1,0 +1,48 @@
+<div class="review-top section-gap">
+    <section class="review-code-pane" aria-labelledby="submitted-code-heading">
+        <div class="review-code-toolbar">
+            <h2 id="submitted-code-heading">Submitted Code</h2>
+            <span class="review-code-language">Python</span>
+        </div>
+        <pre class="review-code" translate="no" data-no-translate><code>{% for line in code_review.lines %}<span class="review-code-line{% if line.runtime_error %} is-runtime-error{% endif %}"><span class="review-line-number" aria-hidden="true">{{ line.number }}</span><span class="review-line-text">{{ line.html }}</span></span>{% endfor %}</code></pre>
+        {% if code_review.runtime_line %}
+            <p class="review-line-note"><span>Line {{ code_review.runtime_line }}</span> · Python traceback</p>
+        {% endif %}
+    </section>
+
+    <aside class="review-evidence" aria-labelledby="review-evidence-heading">
+        <div class="eyebrow">Runtime Evidence</div>
+        <h2 id="review-evidence-heading">Expected and Actual Output</h2>
+        <div class="review-signals">
+            <div>
+                <span>Execution status</span>
+                <span class="badge {% if record.execution_status == 'success' %}badge-success-soft{% elif record.execution_status == 'timeout' %}badge-warning-soft{% elif record.execution_status %}badge-danger-soft{% else %}badge-soft{% endif %}">{{ record.execution_status|default:"not run" }}</span>
+            </div>
+            <div>
+                <span>Output comparison</span>
+                <span class="badge {% if record.output_comparison_status == 'exact_match' or record.output_comparison_status == 'normalized_match' %}badge-success-soft{% elif record.output_comparison_status == 'mismatch' or record.output_comparison_status == 'timeout' %}badge-warning-soft{% elif record.output_comparison_status == 'not_applicable' %}badge-soft{% else %}badge-danger-soft{% endif %}">{{ record.output_comparison_status|default:"not_applicable" }}</span>
+            </div>
+        </div>
+        <div class="review-output-grid">
+            <div>
+                <div class="eyebrow">Expected Output</div>
+                {% if record.expected_output %}<pre class="review-output-value" translate="no" data-no-translate>{{ record.expected_output }}</pre>{% else %}<p class="review-empty">No expected output.</p>{% endif %}
+            </div>
+            <div>
+                <div class="eyebrow">Actual Output</div>
+                {% if record.actual_output %}<pre class="review-output-value" translate="no" data-no-translate>{{ record.actual_output }}</pre>{% else %}<p class="review-empty">No actual output.</p>{% endif %}
+            </div>
+        </div>
+        <div class="review-runtime-facts">
+            <span>Sample Input: {% if record.sample_input %}<code class="review-input-code" translate="no" data-no-translate>{{ record.sample_input }}</code>{% else %}No stdin input.{% endif %}</span>
+            <span>Return code: {{ record.execution_return_code|default_if_none:"none" }}</span>
+            <span>Execution time: {{ record.execution_time_ms|default_if_none:"0" }} ms</span>
+        </div>
+        {% if record.execution_stderr %}
+            <details class="review-stderr">
+                <summary>Error Output</summary>
+                <pre class="code-block" translate="no" data-no-translate><code>{{ record.execution_stderr }}</code></pre>
+            </details>
+        {% endif %}
+    </aside>
+</div>

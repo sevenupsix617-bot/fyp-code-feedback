@@ -1,0 +1,110 @@
+{% extends "feedback_app/base.html" %}
+
+{% block title %}Current Knowledge Status | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}{% if is_own_profile %}My Learning Progress{% else %}Student Profile{% endif %}{% endblock %}
+{% block page_title %}Current Knowledge Status{% endblock %}
+{% block page_subtitle %}{{ status.user.username }} · Recent topic-level attempt evidence{% endblock %}
+
+{% block page_actions %}
+    {% if is_own_profile %}
+        <a href="{% url 'my_profile' %}" class="btn btn-outline-secondary">
+            <i data-lucide="radar" class="icon-sm" aria-hidden="true"></i>
+            Historical Progress
+        </a>
+    {% else %}
+        <a href="{% url 'student_profile' status.user.id %}" class="btn btn-outline-secondary">
+            <i data-lucide="radar" class="icon-sm" aria-hidden="true"></i>
+            Historical Progress
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <section class="panel section-gap">
+        <div class="panel-header">
+            <div class="eyebrow">Next Practice</div>
+            <h2 class="h5 mb-0">Suggested Topics</h2>
+        </div>
+        <div class="panel-body">
+            {% for topic in status.priorities %}
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-2 {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                    <div>
+                        <div class="fw-semibold">{{ topic.label }}</div>
+                        <div class="small text-muted">{{ topic.reason }}</div>
+                    </div>
+                    {% if is_own_profile %}
+                        <a href="{% url 'student_submit' %}?topic={{ topic.id }}" class="btn btn-sm btn-outline-primary align-self-start">
+                            <i data-lucide="arrow-right" class="icon-sm" aria-hidden="true"></i>
+                            Practise
+                        </a>
+                    {% else %}
+                        <a href="{% url 'student_skill_detail' status.user.id topic.id %}" class="btn btn-sm btn-outline-primary align-self-start">View evidence</a>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="mb-0 text-muted">No clear weak topic appears in the recent attempts. Keep practising across the question bank.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel section-gap">
+        <div class="panel-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="eyebrow">Current Estimate</div>
+                <h2 class="h5 mb-0">Topics</h2>
+            </div>
+            <span class="badge badge-soft">Latest {{ status.recent_limit }} attempts per topic</span>
+        </div>
+        <div class="panel-body p-0">
+            {% for topic in status.topics %}
+                <div class="row g-2 align-items-center mx-0 p-3 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div class="col-12 col-lg-4">
+                        {% if is_own_profile %}
+                            <a href="{% url 'student_submit' %}?topic={{ topic.id }}" class="fw-semibold text-dark">{{ topic.label }}</a>
+                        {% else %}
+                            <a href="{% url 'student_skill_detail' status.user.id topic.id %}" class="fw-semibold text-dark">{{ topic.label }}</a>
+                        {% endif %}
+                        {% if topic.priority %}<span class="badge badge-warning-soft">Practice next</span>{% endif %}
+                    </div>
+                    <div class="col-4 col-lg-2">
+                        <div class="eyebrow">Recent score</div>
+                        {% if topic.has_evidence %}
+                            <strong>{{ topic.recent_score }}/100</strong>
+                            <div class="small text-muted">{{ topic.recent_count }}/{{ status.recent_limit }} attempts</div>
+                        {% else %}
+                            <span class="text-muted">No evidence</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-4 col-lg-2">
+                        <div class="eyebrow">Practice</div>
+                        <strong>{{ topic.practice_count }}</strong>
+                        <div class="small text-muted">{{ topic.question_count }} question{{ topic.question_count|pluralize }}</div>
+                    </div>
+                    <div class="col-4 col-lg-2">
+                        <div class="eyebrow">Unresolved</div>
+                        {% if topic.has_evidence %}
+                            <strong>{{ topic.error_rate }}%</strong>
+                            <div class="small text-muted">{{ topic.unresolved_count }}/{{ topic.recent_count }} recent</div>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-12 col-lg-2 d-grid">
+                        {% if is_own_profile %}
+                            <a href="{% url 'student_submit' %}?topic={{ topic.id }}" class="btn btn-sm btn-outline-primary">Practise topic</a>
+                        {% else %}
+                            <a href="{% url 'student_skill_detail' status.user.id topic.id %}" class="btn btn-sm btn-outline-primary">View evidence</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <p class="small text-muted mb-0">
+        Estimated from up to the latest {{ status.recent_limit }} saved attempts for each topic, not a standardised assessment.
+        Multi-topic marks are apportioned using baseline topic scores from each question's latest attempt; a zero baseline uses equal shares.
+        Earlier Topic credits can change when baseline scores change; this weighting suggests where to practise, but does not prove which topic caused an error.
+        A topic without attempts has insufficient evidence, not a score of zero. AI feedback failures may also affect the estimate.
+    </p>
+{% endblock %}

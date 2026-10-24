@@ -35,7 +35,7 @@
                 <div class="metric-value">
                     {% if skill.topic.has_evidence %}{{ skill.topic.score }}/100{% else %}No evidence{% endif %}
                 </div>
-                <div class="small text-muted mt-2">Latest attempt per tagged question, averaged</div>
+                <div class="small text-muted mt-2">EMA of all attributed attempts for this Topic</div>
             </div>
         </div>
         <div class="col-md-4">
@@ -89,11 +89,14 @@
 
             <div class="score-note mt-3">
                 <strong>How this Topic score is calculated:</strong>
-                No Error = 100; output mismatch = 45; sample output matched but an unresolved issue remains = 40;
-                unresolved classified attempt without decisive output evidence = 35; execution error = 20; no reliable evidence = 0.
-                The current mastery value uses only the latest attempt for each attempted question carrying this Topic tag, then averages those question-level scores.
-                The line above shows individual attempts over time and may include several questions.
-                This is a prototype heuristic, not a standardised educational measurement.
+                The heuristic question-mark rubric is: solved = 100; exact output match but unresolved = 75;
+                normalized output match but unresolved = 65; output mismatch = 45;
+                classified issue without decisive output evidence = 35; unsuccessful execution = 20;
+                no reliable scoring signal = 0.
+                Multi-Topic marks are attributed using baseline Topic levels, with equal shares when a baseline is zero and a 100-point cap.
+                This Topic score applies an exponential moving average (EMA, &alpha;=0.5) to every attributed attempt in time order: recent attempts have more weight, so earlier errors gradually fade.
+                The line above shows the original question marks over time. The table also shows the baseline-weighted Topic credit for each attempt, recalculated from current baselines.
+                This is a prototype heuristic, not a standardised measurement of knowledge.
             </div>
         </div>
     </section>
@@ -112,7 +115,8 @@
                             <th>Date</th>
                             <th>Question</th>
                             <th>Question Attempt</th>
-                            <th>Score</th>
+                            <th>Question Mark</th>
+                            <th>Topic Credit</th>
                             <th>Error Classification</th>
                             <th>Solved</th>
                             <th>Detail</th>
@@ -126,6 +130,7 @@
                                 <td>{{ attempt.question }}</td>
                                 <td>A{{ attempt.question_attempt }}</td>
                                 <td>{{ attempt.score }}</td>
+                                <td>{{ attempt.topic_credit }}</td>
                                 <td>{{ attempt.category }}</td>
                                 <td>
                                     {% if attempt.solved %}
@@ -143,7 +148,7 @@
                             </tr>
                         {% empty %}
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">No evidence is available for this Topic.</td>
+                                <td colspan="9" class="text-center text-muted py-4">No evidence is available for this Topic.</td>
                             </tr>
                         {% endfor %}
                     </tbody>

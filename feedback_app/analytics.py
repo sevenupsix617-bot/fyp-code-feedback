@@ -1,6 +1,7 @@
 import math
-from collections import Counter
+from collections import Counter, defaultdict
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 
@@ -11,7 +12,13 @@ from .taxonomy import TOPIC_TAXONOMY, parse_topic_tags
 
 NO_ERROR = "No Error"
 MATCH_STATUSES = {"exact_match", "normalized_match"}
+# Higher alpha gives more weight to recent attempts.
+MASTERY_EMA_ALPHA = 0.5
 UNRESOLVED_FILTER = Q(solved=False)
+RUNTIME_ERROR_STATUSES = {
+    "name_error", "type_error", "value_error", "index_error", "key_error",
+    "eof_error", "module_not_found", "import_error", "runtime_error",
+}
 RADAR_LABEL_LINES = {
     "program_structure": ("Program", "Structure"),
     "variables_assignment": ("Variables &", "Assignment"),
@@ -53,10 +60,15 @@ def _attempt_score_details(record):
             "score": 45,
             "reason": "Program ran, but actual output did not match expected output.",
         }
-    if record.output_comparison_status in MATCH_STATUSES:
+    if record.output_comparison_status == "exact_match":
         return {
-            "score": 40,
-            "reason": "Sample output matched, but feedback still identified an unresolved issue.",
+            "score": 75,
+            "reason": "Exact sample output matched, but the attempt remains unresolved.",
+        }
+    if record.output_comparison_status == "normalized_match":
+        return {
+            "score": 65,
+            "reason": "Normalized sample output matched, but the attempt remains unresolved.",
         }
     if record.error_category:
         return {
@@ -67,6 +79,65 @@ def _attempt_score_details(record):
         "score": 0,
         "reason": "No reliable classification or runtime evidence is available.",
     }
+
+
+def _allocate_partial_credit(mark, baseline_scores):
+    """Allocate S*n by Li/sum(L), capped at 100 with excess redistributed."""
+    if not baseline_scores:
+        return {}
+
+    remaining = float(mark) * len(baseline_scores)
+    weights = (
+        {topic_id: 1 for topic_id in baseline_scores}
+        if any(level <= 0 for level in baseline_scores.values())
+        else baseline_scores
+    )
+    unassigned = list(baseline_scores)
+    credits = {}
+
+    while unassigned:
+        total_weight = sum(weights[topic_id] for topic_id in unassigned)
+        capped = [
+            topic_id for topic_id in unassigned
+            if remaining * weights[topic_id] / total_weight > 100
+        ]
+        if not capped:
+            credits.update({
+                topic_id: remaining * weights[topic_id] / total_weight
+                for topic_id in unassigned
+            })
+            break
+        for topic_id in capped:
+            credits[topic_id] = 100.0
+            remaining -= 100
+        unassigned = [topic_id for topic_id in unassigned if topic_id not in capped]
+
+    return credits
+
+
+def _attributed_attempt_scores(records):
+    """First average latest-question marks per topic, then weight each attempt."""
+    latest_by_question = {record.question_id: record for record in records}
+    baseline_marks = {topic_id: [] for topic_id in TOPIC_TAXONOMY}
+    for record in latest_by_question.values():
+        mark = _attempt_score_details(record)["score"]
+        for topic_id in parse_topic_tags(record.question.topic_tags):
+            baseline_marks[topic_id].append(mark)
+    baseline_scores = {
+        topic_id: sum(marks) / len(marks) if marks else 0
+        for topic_id, marks in baseline_marks.items()
+    }
+
+    attributed = {}
+    for record in records:
+        topic_ids = parse_topic_tags(record.question.topic_tags)
+        if not topic_ids:
+            continue
+        attributed[record.id] = _allocate_partial_credit(
+            _attempt_score_details(record)["score"],
+            {topic_id: baseline_scores[topic_id] for topic_id in topic_ids},
+        )
+    return attributed
 
 
 def _radar_point(center_x, center_y, radius, index, total):
@@ -82,13 +153,21 @@ def _point_string(points):
     return " ".join(f"{x},{y}" for x, y in points)
 
 
-def build_skill_mastery(user):
-    """Build transparent per-topic scores from each attempted question's latest record.
+def _ewma(values, alpha):
+    if not values:
+        return None
+    result = values[0]
+    for value in values[1:]:
+        result = alpha * value + (1 - alpha) * result
+    return result
 
-    A question contributes at most one score to each of its fixed topic tags: the
-    student's latest saved attempt for that question. When a topic covers multiple
-    attempted questions, their latest-attempt scores are averaged. Topics without
-    an attempted tagged question retain a score of zero with has_evidence=False.
+
+def build_skill_mastery(user):
+    """Build per-topic scores from all attributed attempts in chronological order.
+
+    Attribution uses the existing latest-question baselines. The radar then
+    applies an EMA to every attributed attempt for each topic. Topics without
+    an attempted tagged question retain score zero with has_evidence=False.
     """
 
     records = list(
@@ -96,25 +175,30 @@ def build_skill_mastery(user):
         .select_related("question")
         .order_by("created_at", "id")
     )
+    attributed = _attributed_attempt_scores(records)
     latest_by_question = {}
     attempt_counts = Counter()
+    attempt_scores = {topic_id: [] for topic_id in TOPIC_TAXONOMY}
 
     for record in records:
         topic_ids = parse_topic_tags(record.question.topic_tags)
         for topic_id in topic_ids:
             attempt_counts[topic_id] += 1
+            attempt_scores[topic_id].append(attributed[record.id][topic_id])
         latest_by_question[record.question_id] = record
 
     latest_scores = {topic_id: [] for topic_id in TOPIC_TAXONOMY}
     for record in latest_by_question.values():
         score_details = _attempt_score_details(record)
         for topic_id in parse_topic_tags(record.question.topic_tags):
+            topic_score = attributed[record.id][topic_id]
             latest_scores[topic_id].append(
                 {
                     "question_id": record.question_id,
                     "question": record.question.title,
                     "record_id": record.id,
-                    "score": score_details["score"],
+                    "score": round(topic_score),
+                    "score_value": topic_score,
                     "score_reason": score_details["reason"],
                     "date": record.created_at.strftime("%Y-%m-%d"),
                 }
@@ -129,7 +213,8 @@ def build_skill_mastery(user):
 
     for index, (topic_id, definition) in enumerate(TOPIC_TAXONOMY.items()):
         evidence = latest_scores[topic_id]
-        score = round(sum(item["score"] for item in evidence) / len(evidence)) if evidence else 0
+        ema_score = _ewma(attempt_scores[topic_id], MASTERY_EMA_ALPHA)
+        score = round(ema_score) if ema_score is not None else 0
         axis_x, axis_y, angle = _radar_point(
             center_x,
             center_y,
@@ -153,11 +238,11 @@ def build_skill_mastery(user):
         )
         cosine = math.cos(angle)
         label_anchor = "start" if cosine > 0.25 else "end" if cosine < -0.25 else "middle"
-        has_evidence = bool(evidence)
+        has_evidence = ema_score is not None
         tooltip = (
             f"{definition['label']} | Mastery {score}/100 | "
-            f"{len(evidence)} question-level latest score(s) averaged | "
-            f"{attempt_counts[topic_id]} saved attempt(s)"
+            f"EMA of {attempt_counts[topic_id]} attributed attempt(s) (alpha=0.5) | "
+            f"{len(evidence)} attempted tagged question(s)"
             if has_evidence
             else f"{definition['label']} | No attempted tagged question yet"
         )
@@ -208,9 +293,86 @@ def build_skill_mastery(user):
         "has_evidence": any(topic["has_evidence"] for topic in topics),
         "evidence_topic_count": sum(topic["has_evidence"] for topic in topics),
         "aggregation_rule": (
-            "For each topic, take the latest saved attempt score for every attempted "
-            "question tagged with that topic, then calculate the arithmetic mean."
+            "First average each topic's latest raw question marks as a baseline, "
+            "then allocate multi-topic marks in proportion to those baselines. "
+            "Apply an EMA (alpha=0.5) to every attributed attempt in time order."
         ),
+    }
+
+
+def build_current_status(user, recent_limit=None):
+    if recent_limit is None:
+        recent_limit = settings.CURRENT_STATUS_RECENT_ATTEMPTS
+    recent_limit = max(1, int(recent_limit))
+
+    recent_attempts = {topic_id: [] for topic_id in TOPIC_TAXONOMY}
+    practice_counts = Counter()
+    question_ids = {topic_id: set() for topic_id in TOPIC_TAXONOMY}
+    records = list(
+        CodeFeedbackRecord.objects.filter(user=user, question__isnull=False)
+        .select_related("question")
+        .order_by("created_at", "id")
+    )
+    attributed = _attributed_attempt_scores(records)
+
+    for record in reversed(records):
+        topic_ids = parse_topic_tags(record.question.topic_tags)
+        for topic_id in topic_ids:
+            practice_counts[topic_id] += 1
+            question_ids[topic_id].add(record.question_id)
+            if len(recent_attempts[topic_id]) < recent_limit:
+                recent_attempts[topic_id].append({
+                    "score": attributed[record.id][topic_id],
+                    "solved": record.solved,
+                })
+
+    topics = []
+    for topic_id, definition in TOPIC_TAXONOMY.items():
+        evidence = recent_attempts[topic_id]
+        recent_count = len(evidence)
+        unresolved_count = sum(not attempt["solved"] for attempt in evidence)
+        topics.append(
+            {
+                "id": topic_id,
+                "label": definition["label"],
+                "has_evidence": bool(evidence),
+                "recent_score": round(sum(attempt["score"] for attempt in evidence) / recent_count)
+                if evidence else None,
+                "recent_count": recent_count,
+                "unresolved_count": unresolved_count,
+                "error_rate": round(unresolved_count * 100 / recent_count) if evidence else None,
+                "practice_count": practice_counts[topic_id],
+                "question_count": len(question_ids[topic_id]),
+            }
+        )
+
+    topics.sort(
+        key=lambda topic: (
+            not topic["has_evidence"],
+            topic["recent_score"] if topic["has_evidence"] else 101,
+            topic["label"],
+        )
+    )
+    priorities = [
+        topic for topic in topics
+        if topic["has_evidence"] and (topic["recent_score"] < 75 or topic["unresolved_count"])
+    ][:3]
+    if not priorities:
+        priorities = [topic for topic in topics if not topic["has_evidence"]][:3]
+    for topic in priorities:
+        topic["priority"] = True
+        topic["reason"] = (
+            f"{topic['unresolved_count']} of the latest {topic['recent_count']} attempts "
+            "were unresolved."
+            if topic["has_evidence"]
+            else "No saved attempts for this topic yet."
+        )
+
+    return {
+        "user": user,
+        "recent_limit": recent_limit,
+        "topics": topics,
+        "priorities": priorities,
     }
 
 
@@ -228,11 +390,13 @@ def build_skill_timeline(user, topic_id, limit=30):
         for record in records
         if topic_id in parse_topic_tags(record.question.topic_tags)
     ]
+    attributed = _attributed_attempt_scores(records)
     question_attempt_counts = Counter()
     timeline = []
     for index, record in enumerate(topic_records, start=1):
         question_attempt_counts[record.question_id] += 1
         score_details = _attempt_score_details(record)
+        topic_score = attributed[record.id][topic_id]
         solved = record.solved
         timeline.append(
             {
@@ -246,7 +410,11 @@ def build_skill_timeline(user, topic_id, limit=30):
                 "category": record.error_category or "Unclassified",
                 "comparison": record.output_comparison_status or "N/A",
                 "score": score_details["score"],
-                "score_reason": score_details["reason"],
+                "topic_credit": round(topic_score),
+                "score_reason": (
+                    f"Question mark {score_details['score']}: {score_details['reason']} "
+                    f"Baseline-weighted topic credit {topic_score:.1f}."
+                ),
                 "solved": solved,
                 "solved_label": "Solved" if solved else "Unresolved",
                 "record": record,
@@ -437,6 +605,107 @@ def build_student_profile(user, limit=12):
     }
 
 
+def build_question_difficulty():
+    """Summarise student practice runs, counting attempts through first solve."""
+    runs_by_question = defaultdict(lambda: defaultdict(list))
+    records = (
+        CodeFeedbackRecord.objects.filter(question__isnull=False, user__is_staff=False)
+        .values(
+            "question_id", "user_id", "trajectory_id", "solved",
+            "execution_status", "output_comparison_status",
+        )
+        .order_by("created_at", "id")
+    )
+    for record in records:
+        run_key = (
+            record["user_id"],
+            "trajectory" if record["trajectory_id"] else "legacy",
+            record["trajectory_id"],
+        )
+        runs_by_question[record["question_id"]][run_key].append(record)
+
+    questions = []
+    for question in Question.objects.all().order_by("title"):
+        runs = list(runs_by_question[question.pk].values())
+        attempts = [record for run in runs for record in run]
+        attempts_to_solve = []
+        for run in runs:
+            first_solve = next(
+                (index for index, record in enumerate(run, start=1) if record["solved"]),
+                None,
+            )
+            if first_solve is not None:
+                attempts_to_solve.append(first_solve)
+
+        attempt_total = len(attempts)
+        run_total = len(runs)
+        solved_run_total = len(attempts_to_solve)
+        student_total = len({record["user_id"] for record in attempts})
+        solved_student_total = len({
+            run[0]["user_id"] for run in runs if any(record["solved"] for record in run)
+        })
+        average = (
+            sum(attempts_to_solve) / solved_run_total if solved_run_total else None
+        )
+        solve_rate = round(100 * solved_run_total / run_total) if run_total else None
+        if not attempt_total:
+            label, badge = "Unattempted", "badge-soft"
+        elif (average is not None and average >= 3 and attempt_total >= 3) or (
+            attempt_total >= 5 and solve_rate <= 50
+        ):
+            label, badge = "Difficult", "badge-danger-soft"
+        elif (
+            attempt_total >= 5
+            and student_total >= 2
+            and solve_rate >= 75
+            and average is not None
+            and average <= 2
+        ):
+            label, badge = "Popular, easier", "badge-success-soft"
+        else:
+            label, badge = "Limited evidence", "badge-warning-soft"
+
+        questions.append({
+            "id": question.pk,
+            "title": question.title,
+            "attempt_total": attempt_total,
+            "student_total": student_total,
+            "solved_student_total": solved_student_total,
+            "run_total": run_total,
+            "solved_run_total": solved_run_total,
+            "unresolved_run_total": run_total - solved_run_total,
+            "unresolved_attempt_total": sum(not record["solved"] for record in attempts),
+            "average_attempts_to_solve": round(average, 1) if average is not None else None,
+            "average_sort_value": average,
+            "solve_rate": solve_rate,
+            "mismatch_total": sum(
+                record["execution_status"] == "success"
+                and record["output_comparison_status"] == "mismatch"
+                for record in attempts
+            ),
+            "runtime_error_total": sum(
+                record["execution_status"] in RUNTIME_ERROR_STATUSES
+                for record in attempts
+            ),
+            "other_execution_failure_total": sum(
+                bool(record["execution_status"])
+                and record["execution_status"] != "success"
+                and record["execution_status"] not in RUNTIME_ERROR_STATUSES
+                for record in attempts
+            ),
+            "difficulty_label": label,
+            "difficulty_badge": badge,
+        })
+
+    questions.sort(key=lambda item: (
+        item["average_sort_value"] is None,
+        -(item["average_sort_value"] or 0),
+        -item["attempt_total"],
+        item["title"].casefold(),
+    ))
+    return questions
+
+
 def build_class_analytics():
     User = get_user_model()
     submission_count = CodeFeedbackRecord.objects.count()
@@ -468,21 +737,7 @@ def build_class_analytics():
         denominator=non_success_count,
     )
 
-    hard_questions = Question.objects.annotate(
-        submission_total=Count("codefeedbackrecord"),
-        unresolved_total=Count(
-            "codefeedbackrecord",
-            filter=Q(codefeedbackrecord__solved=False),
-        ),
-        solved_total=Count(
-            "codefeedbackrecord",
-            filter=Q(codefeedbackrecord__solved=True),
-        ),
-        mismatch_total=Count(
-            "codefeedbackrecord",
-            filter=Q(codefeedbackrecord__output_comparison_status="mismatch"),
-        ),
-    ).order_by("-unresolved_total", "-mismatch_total", "title")[:8]
+    question_difficulty = build_question_difficulty()
 
     output_breakdown = _add_percent(
         CodeFeedbackRecord.objects.exclude(output_comparison_status="")
@@ -516,7 +771,7 @@ def build_class_analytics():
         "taxonomy_count": len(PECI_ERROR_CODES),
         "common_errors": common_errors,
         "concept_weakness": concept_weakness,
-        "hard_questions": hard_questions,
+        "question_difficulty": question_difficulty,
         "student_profiles": student_profiles,
         "output_breakdown": output_breakdown,
         "saved_next_steps": saved_next_steps,

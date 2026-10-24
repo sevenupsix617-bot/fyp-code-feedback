@@ -14,8 +14,78 @@
 
 {% block extra_head %}
 <style>
+    .submission-workspace {
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        overflow: hidden;
+    }
+
+    .submission-brief,
+    .submission-editor {
+        min-width: 0;
+        padding: 1.25rem;
+    }
+
+    .submission-brief {
+        background: var(--surface-soft);
+        border-right: 1px solid var(--line);
+    }
+
+    .submission-brief .question-preview {
+        background: transparent;
+        border: 0;
+        padding: 0;
+    }
+
+    .submission-brief .code-block {
+        background: #ffffff;
+        border-color: var(--line);
+        color: var(--ink);
+        max-height: 130px;
+    }
+
+    .submission-editor {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .submission-editor .mb-3 {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+
     #id_student_code {
-        min-height: 300px;
+        background: var(--code-bg);
+        border-color: #2a4249;
+        color: var(--code-ink);
+        flex: 1;
+        font-size: 0.9rem;
+        line-height: 1.55;
+        min-height: 410px;
+        padding: 1rem;
+        resize: vertical;
+    }
+
+    #id_student_code::placeholder {
+        color: #a9bdc1;
+    }
+
+    @media (max-width: 991.98px) {
+        .submission-workspace {
+            grid-template-columns: 1fr;
+        }
+
+        .submission-brief {
+            border-bottom: 1px solid var(--line);
+            border-right: 0;
+        }
+
+        #id_student_code {
+            min-height: 310px;
+        }
     }
 </style>
 {% endblock %}
@@ -29,11 +99,18 @@
             </h2>
         </div>
         <div class="panel-body">
+            {% if topic_focus %}
+                <div class="alert alert-primary mb-4">
+                    Practising {{ topic_focus.label }}.
+                    <a href="{% url 'student_submit' %}" class="alert-link">View all questions</a>
+                </div>
+            {% endif %}
             {% if retry_record %}
                 <div class="alert alert-primary mb-4">
                     Your previous code is preserved below. Edit it and submit another attempt for the same question.
                 </div>
             {% endif %}
+            {% if questions %}
             <form method="POST">
                 {% csrf_token %}
 
@@ -41,6 +118,8 @@
                     <div class="alert alert-danger">{{ form.non_field_errors }}</div>
                 {% endif %}
 
+                <div class="submission-workspace">
+                <div class="submission-brief">
                 <div class="mb-3">
                     <label class="form-label" for="{{ form.question.id_for_label }}">{{ form.question.label }}</label>
                     {{ form.question }}
@@ -56,7 +135,7 @@
                                 <div>
                                     <div class="eyebrow">Selected Question</div>
                                     <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                        <h3 class="h5 mb-0">{{ question.title }}</h3>
+                                        <h3 class="h5 mb-0" data-no-translate>{{ question.title }}</h3>
                                         {% if question.status == "solved" %}
                                             <span class="badge badge-success-soft">{{ question.status_badge }}</span>
                                         {% elif question.status == "in_progress" %}
@@ -65,7 +144,7 @@
                                             <span class="badge badge-soft">{{ question.status_badge }}</span>
                                         {% endif %}
                                     </div>
-                                    <p class="mb-0">{{ question.problem_statement }}</p>
+                                    <p class="mb-0" data-no-translate>{{ question.problem_statement }}</p>
                                 </div>
                                 <div class="text-md-end small text-muted">
                                     <div>{{ question.difficulty|default:"Difficulty not set" }}</div>
@@ -86,7 +165,9 @@
                         </div>
                     {% endfor %}
                 </div>
+                </div>
 
+                <div class="submission-editor">
                 <div class="mb-3">
                     <label class="form-label" for="{{ form.student_code.id_for_label }}">{{ form.student_code.label }}</label>
                     {{ form.student_code }}
@@ -99,7 +180,12 @@
                     <i data-lucide="send" class="icon-sm" aria-hidden="true"></i>
                     Generate Feedback
                 </button>
+                </div>
+                </div>
             </form>
+            {% else %}
+                <p class="mb-0 text-muted">No active question is available for this topic.</p>
+            {% endif %}
         </div>
     </section>
 {% endblock %}

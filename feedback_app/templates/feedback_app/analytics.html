@@ -16,6 +16,47 @@
     </a>
 {% endblock %}
 
+{% block extra_head %}
+    <style>
+        .student-profile-track {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            position: relative;
+            scroll-snap-type: x mandatory;
+        }
+
+        .student-profile-slide {
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            flex: 0 0 min(100%, 535px);
+            min-width: 0;
+            padding: 1rem;
+            scroll-snap-align: start;
+        }
+
+        .student-carousel-button {
+            align-items: center;
+            display: inline-flex;
+            height: 36px;
+            justify-content: center;
+            padding: 0;
+            width: 36px;
+        }
+
+        .question-difficulty-table {
+            min-width: 960px;
+        }
+
+        @media (max-width: 767.98px) {
+            .student-profile-slide {
+                flex-basis: 100%;
+            }
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     <div class="row g-3 section-gap">
         <div class="col-md-6 col-xl-3">
@@ -29,14 +70,14 @@
             <div class="metric">
                 <div class="metric-label">Classified</div>
                 <div class="metric-value">{{ classified_count }}</div>
-                <div class="small text-muted mt-2">Records using the PECI v3 outcome schema</div>
+                <div class="small text-muted mt-2">Records with a stored classification outcome</div>
             </div>
         </div>
         <div class="col-md-6 col-xl-3">
             <div class="metric">
                 <div class="metric-label">Unresolved</div>
                 <div class="metric-value">{{ non_success_count }}</div>
-                <div class="small text-muted mt-2">Excludes No Error</div>
+                <div class="small text-muted mt-2">All saved attempts not marked solved</div>
             </div>
         </div>
         <div class="col-md-6 col-xl-3">
@@ -122,11 +163,22 @@
                 <div class="eyebrow">Student Profiles</div>
                 <h2 class="h5 mb-0">Skill Mastery Overview</h2>
             </div>
-            <span class="text-muted small">Each Topic averages the latest attempt score from each attempted tagged question.</span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted small">Each Topic uses an EMA (alpha=0.5) of all baseline-weighted attempt credits.</span>
+                {% if student_profiles|length > 1 %}
+                    <span id="student-carousel-position" class="small text-muted" aria-live="polite">1 of {{ student_profiles|length }}</span>
+                    <button type="button" class="btn btn-outline-secondary student-carousel-button" id="student-carousel-prev" aria-label="Previous student" title="Previous student" aria-controls="student-profile-track">
+                        <i data-lucide="chevron-left" class="icon-sm" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary student-carousel-button" id="student-carousel-next" aria-label="Next student" title="Next student" aria-controls="student-profile-track">
+                        <i data-lucide="chevron-right" class="icon-sm" aria-hidden="true"></i>
+                    </button>
+                {% endif %}
+            </div>
         </div>
-        <div class="row g-4">
+        <div id="student-profile-track" class="student-profile-track" role="region" aria-label="Student profiles" tabindex="0">
             {% for profile in student_profiles %}
-                <div class="col-lg-6">
+                <div class="student-profile-slide">
                     <section class="panel h-100">
                         <div class="panel-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
                             <div>
@@ -196,7 +248,7 @@
                     </section>
                 </div>
             {% empty %}
-                <div class="col-12">
+                <div class="student-profile-slide">
                     <section class="panel">
                         <div class="panel-body text-muted">No active student accounts are available.</div>
                     </section>
@@ -205,70 +257,96 @@
         </div>
     </section>
 
-    <div class="row g-4 section-gap">
-        <div class="col-lg-7">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Question Evidence</div>
-                    <h2 class="h5 mb-0">Hard Questions</h2>
-                </div>
-                <div class="panel-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Question</th>
-                                    <th>Attempts</th>
-                                    <th>Unresolved</th>
-                                    <th>Solved</th>
-                                    <th>Mismatches</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for question in hard_questions %}
-                                    <tr>
-                                        <td>{{ question.title }}</td>
-                                        <td>{{ question.submission_total }}</td>
-                                        <td>{{ question.unresolved_total }}</td>
-                                        <td>{{ question.solved_total }}</td>
-                                        <td>{{ question.mismatch_total }}</td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">No question attempts yet.</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+    <section class="panel section-gap">
+        <div class="panel-header">
+            <div class="eyebrow">Question Evidence</div>
+            <h2 class="h5 mb-0">Question Difficulty Overview</h2>
+        </div>
+        <div class="panel-body">
+            <p class="small text-muted mb-2">
+                This table uses student question attempts only; the class totals above include other saved records. Average attempts to solve counts submissions up to the first solved attempt in each student practice run, then averages solved runs only. More attempts to solve can signal difficulty; total attempts alone can reflect popularity. Unsolved runs stay in the solve-rate denominator.
+            </p>
+            <p class="small text-muted mb-0">
+                Popular, easier: at least 5 attempts by 2 students, at least 75% of runs solved, and an average of at most 2 attempts to solve. Difficult: at least 3 attempts to solve on average, or at least 5 attempts with a solve rate of 50% or lower. Other attempted questions have limited evidence. A mismatch ran successfully but printed the wrong output; runtime errors are exceptions, while other failures include syntax errors and timeouts.
+            </p>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 question-difficulty-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Question</th>
+                        <th scope="col">Attempts</th>
+                        <th scope="col">Avg to Solve</th>
+                        <th scope="col">Unresolved</th>
+                        <th scope="col">Solve Rate</th>
+                        <th scope="col">Mismatch</th>
+                        <th scope="col">Runtime Errors</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in question_difficulty %}
+                        <tr>
+                            <td>
+                                <span class="fw-semibold d-block">{{ question.title }}</span>
+                                <span class="badge {{ question.difficulty_badge }}">{{ question.difficulty_label }}</span>
+                            </td>
+                            <td>
+                                {{ question.attempt_total }}
+                                <div class="small text-muted">{{ question.student_total }} student{{ question.student_total|pluralize }}</div>
+                            </td>
+                            <td>
+                                {% if question.average_attempts_to_solve is not None %}{{ question.average_attempts_to_solve }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                <div class="small text-muted">{{ question.solved_run_total }} solved run{{ question.solved_run_total|pluralize }}</div>
+                            </td>
+                            <td>
+                                {{ question.unresolved_attempt_total }}
+                                <div class="small text-muted">{{ question.unresolved_run_total }} unsolved run{{ question.unresolved_run_total|pluralize }}</div>
+                            </td>
+                            <td>
+                                {% if question.solve_rate is not None %}{{ question.solve_rate }}%{% else %}<span class="text-muted">N/A</span>{% endif %}
+                                <div class="small text-muted">{{ question.solved_run_total }}/{{ question.run_total }} runs</div>
+                                <div class="small text-muted">{{ question.solved_student_total }} student{{ question.solved_student_total|pluralize }} solved</div>
+                            </td>
+                            <td>{{ question.mismatch_total }}</td>
+                            <td>
+                                {{ question.runtime_error_total }}
+                                {% if question.other_execution_failure_total %}
+                                    <div class="small text-muted">{{ question.other_execution_failure_total }} other failure{{ question.other_execution_failure_total|pluralize }}</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">No questions are available.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel section-gap">
+        <div class="panel-header">
+            <div class="eyebrow">Runtime Evidence</div>
+            <h2 class="h5 mb-0">Output Comparison Status</h2>
+        </div>
+        <div class="panel-body">
+            <p class="small text-muted">Across all saved records, including instructor manual experiments.</p>
+            {% for item in output_breakdown %}
+                <div class="stat-list-item">
+                    <div class="d-flex justify-content-between gap-3 mb-1">
+                        <span>{{ item.output_comparison_status }}</span>
+                        <span class="text-muted">{{ item.total }}</span>
+                    </div>
+                    <div class="progress-thin" aria-hidden="true">
+                        <span style="width: {{ item.percent }}%;"></span>
                     </div>
                 </div>
-            </section>
+            {% empty %}
+                <p class="text-muted mb-0">No output comparison records have been stored.</p>
+            {% endfor %}
         </div>
-
-        <div class="col-lg-5">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Runtime Evidence</div>
-                    <h2 class="h5 mb-0">Output Comparison Status</h2>
-                </div>
-                <div class="panel-body">
-                    {% for item in output_breakdown %}
-                        <div class="stat-list-item">
-                            <div class="d-flex justify-content-between gap-3 mb-1">
-                                <span>{{ item.output_comparison_status }}</span>
-                                <span class="text-muted">{{ item.total }}</span>
-                            </div>
-                            <div class="progress-thin" aria-hidden="true">
-                                <span style="width: {{ item.percent }}%;"></span>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No output comparison records have been stored.</p>
-                    {% endfor %}
-                </div>
-            </section>
-        </div>
-    </div>
+    </section>
 
     <section class="panel">
         <div class="panel-header">
@@ -292,4 +370,38 @@
             {% endfor %}
         </div>
     </section>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        (function () {
+            const track = document.getElementById("student-profile-track");
+            const previous = document.getElementById("student-carousel-prev");
+            const next = document.getElementById("student-carousel-next");
+            const position = document.getElementById("student-carousel-position");
+            if (!track || !previous || !next) return;
+
+            const slides = Array.from(track.querySelectorAll(".student-profile-slide"));
+            const step = function () {
+                return slides[0].getBoundingClientRect().width
+                    + parseFloat(getComputedStyle(track).gap || "0");
+            };
+            const update = function () {
+                const maximum = Math.max(0, track.scrollWidth - track.clientWidth);
+                previous.disabled = track.scrollLeft <= 2;
+                next.disabled = track.scrollLeft >= maximum - 2;
+                position.textContent = `${Math.min(slides.length, Math.round(track.scrollLeft / step()) + 1)} of ${slides.length}`;
+            };
+
+            previous.addEventListener("click", function () {
+                track.scrollBy({ left: -step(), behavior: "smooth" });
+            });
+            next.addEventListener("click", function () {
+                track.scrollBy({ left: step(), behavior: "smooth" });
+            });
+            track.addEventListener("scroll", update, { passive: true });
+            window.addEventListener("resize", update);
+            update();
+        }());
+    </script>
 {% endblock %}

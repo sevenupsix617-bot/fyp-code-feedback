@@ -1,9 +1,7 @@
 import json
 import time
 from collections import defaultdict
-from pathlib import Path
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -12,8 +10,14 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .ai_response import detect_solution_leakage, parse_ai_feedback_with_metadata
-from .analytics import build_class_analytics, build_skill_timeline, build_student_profile
+from .analytics import (
+    build_class_analytics,
+    build_current_status,
+    build_skill_timeline,
+    build_student_profile,
+)
 from .code_runner import run_python_code
+from .code_review import build_code_review
 from .feedback_schema import FEEDBACK_SCHEMA_VERSION
 from .forms import CodeSubmitForm, StudentCodeSubmitForm
 from .json_repair import (
@@ -23,7 +27,7 @@ from .json_repair import (
     should_retry_invalid_json,
 )
 from .llm_client import call_llm_with_metadata, get_llm_model_name
-from .models import CodeFeedbackRecord, EvaluationRun, Question
+from .models import CodeFeedbackRecord, Question
 from .output_comparison import (
     COMPARISON_MODE_NORMALIZED,
     COMPARISON_MODE_STRICT,
@@ -36,34 +40,7 @@ from .prompt_builder import (
     build_feedback_prompt,
     build_json_repair_prompt,
 )
-
-
-FINAL_EVALUATION_REPORTS = [
-    {
-        "title": "Current PECI A-X Independent Evaluation",
-        "badge": "Current taxonomy evidence",
-        "filename": "peci_ax_evaluation_summary.json",
-        "summary_filename": "peci_ax_evaluation_summary.md",
-        "description": (
-            "55 Refactory submissions re-annotated for the current PECI A-X taxonomy, "
-            "tested with 2 providers and the live strict-scaffolded prompt."
-        ),
-    },
-    {
-        "title": "Day 12 Refactory Main Evaluation",
-        "badge": "Main evidence",
-        "filename": "day12_deepseek_kimi_refactory_55_final_real_llm_summary.json",
-        "summary_filename": "day12_deepseek_kimi_refactory_55_final_real_llm_summary.md",
-        "description": "55 real Refactory student submissions, 2 providers, and 3 prompt versions.",
-    },
-    {
-        "title": "Day 14 Boundary Evaluation",
-        "badge": "Supplemental check",
-        "filename": "day14_boundary_cases_real_llm_final_summary.json",
-        "summary_filename": "day14_boundary_cases_real_llm_final_summary.md",
-        "description": "12 hand-crafted boundary cases for syntax, input, timeout, and related edge cases.",
-    },
-]
+from .taxonomy import TOPIC_TAXONOMY, parse_topic_tags
 
 
 def _require_staff(user):
@@ -141,466 +118,6 @@ def _build_student_question_status(user, questions):
         .order_by("_status_order")
     )
     return sorted_questions, question_queryset, status_map
-
-
-def _format_percent(value):
-    if value is None:
-        return "N/A"
-    return f"{float(value) * 100:.2f}%"
-
-
-def _format_percent_1(value):
-    if value is None:
-        return "N/A"
-    return f"{float(value) * 100:.1f}%"
-
-
-def _format_number(value):
-    if value is None:
-        return "N/A"
-    if isinstance(value, float):
-        return f"{value:.2f}"
-    return value
-
-
-def _load_json_file(path):
-    try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, TypeError, json.JSONDecodeError):
-        return None
-
-
-def _aggregate_by_prompt(by_provider_prompt):
-    totals = defaultdict(lambda: {"correct": 0.0, "total": 0})
-    for key, item in (by_provider_prompt or {}).items():
-        try:
-            _provider, prompt_version = key.split(":", 1)
-        except ValueError:
-            prompt_version = key
-        total = item.get("total") or 0
-        accuracy = item.get("category_accuracy")
-        if accuracy is None:
-            continue
-        totals[prompt_version]["correct"] += float(accuracy) * total
-        totals[prompt_version]["total"] += total
-
-    return {
-        prompt: values["correct"] / values["total"]
-        for prompt, values in totals.items()
-        if values["total"]
-    }
-
-
-def _aggregate_by_provider_from_conditions(by_provider_prompt):
-    totals = defaultdict(lambda: {"correct": 0.0, "total": 0})
-    for key, item in (by_provider_prompt or {}).items():
-        try:
-            provider, _prompt_version = key.split(":", 1)
-        except ValueError:
-            provider = key
-        total = item.get("total") or 0
-        accuracy = item.get("category_accuracy")
-        if accuracy is None:
-            continue
-        totals[provider]["correct"] += float(accuracy) * total
-        totals[provider]["total"] += total
-
-    return {
-        provider: values["correct"] / values["total"]
-        for provider, values in totals.items()
-        if values["total"]
-    }
-
-
-def _aggregate_latency_by_provider(results_rows):
-    latency = defaultdict(list)
-    for row in results_rows:
-        provider = row.get("provider")
-        value = row.get("llm_latency_ms")
-        if provider and value is not None:
-            latency[provider].append(float(value))
-
-    return {
-        provider: sum(values) / len(values)
-        for provider, values in latency.items()
-        if values
-    }
-
-
-def _category_recall(results_rows, category):
-    rows = [row for row in results_rows if row.get("ground_truth_category") == category]
-    if not rows:
-        return None
-    correct = sum(1 for row in rows if row.get("category_match"))
-    predicted_counts = defaultdict(int)
-    for row in rows:
-        predicted_counts[row.get("predicted_category") or "N/A"] += 1
-    confusions = ", ".join(
-        f"{label} {count}"
-        for label, count in sorted(predicted_counts.items(), key=lambda item: (-item[1], item[0]))
-        if label != category
-    )
-    return {
-        "total": len(rows),
-        "correct": correct,
-        "recall": correct / len(rows),
-        "confusions": confusions,
-    }
-
-
-def _build_day12_display(payload):
-    automatic = payload.get("automatic_metrics", {}) or {}
-    artifact_paths = payload.get("artifact_paths", {}) or {}
-    by_provider_prompt = automatic.get("by_provider_prompt", {}) or {}
-    by_prompt = _aggregate_by_prompt(by_provider_prompt)
-    by_provider = _aggregate_by_provider_from_conditions(by_provider_prompt)
-
-    results_payload = _load_json_file(artifact_paths.get("results_json"))
-    results_rows = (results_payload or {}).get("results", [])
-    latency_by_provider = _aggregate_latency_by_provider(results_rows)
-    function_recall = _category_recall(results_rows, "Function Error")
-    logic_recall = _category_recall(results_rows, "Logic Error")
-
-    baseline = by_prompt.get("baseline")
-    context_aware = by_prompt.get("context_aware")
-    strict_scaffolded = by_prompt.get("strict_scaffolded")
-    runtime_gain = (
-        (context_aware - baseline) * 100
-        if context_aware is not None and baseline is not None
-        else None
-    )
-
-    provider_rows = []
-    for provider in sorted(by_provider):
-        provider_rows.append(
-            {
-                "provider": provider.title(),
-                "accuracy": _format_percent_1(by_provider.get(provider)),
-                "latency": f"{latency_by_provider[provider] / 1000:.1f}s"
-                if provider in latency_by_provider
-                else "N/A",
-            }
-        )
-
-    prompt_rows = [
-        {
-            "prompt": "Baseline",
-            "accuracy": _format_percent_1(baseline),
-            "note": "Question + code only; no runtime evidence.",
-        },
-        {
-            "prompt": "Context-aware",
-            "accuracy": _format_percent_1(context_aware),
-            "note": "Adds execution status, actual output, expected output, and comparison.",
-        },
-        {
-            "prompt": "Strict-scaffolded",
-            "accuracy": _format_percent_1(strict_scaffolded),
-            "note": "Adds stricter anti-leakage and schema rules.",
-        },
-    ]
-
-    key_findings = []
-    if baseline is not None and context_aware is not None:
-        key_findings.append(
-            {
-                "title": "Runtime evidence is the main improvement",
-                "metric": f"{_format_percent_1(baseline)} -> {_format_percent_1(context_aware)}",
-                "body": (
-                    "Context-aware prompting substantially improved error-category recognition "
-                    f"over baseline ({runtime_gain:.1f} percentage points)."
-                ),
-            }
-        )
-
-    if by_provider:
-        best_provider = max(by_provider, key=by_provider.get)
-        other_providers = [provider for provider in by_provider if provider != best_provider]
-        comparison_text = ""
-        if other_providers:
-            other = other_providers[0]
-            comparison_text = (
-                f"{best_provider.title()} reached {_format_percent_1(by_provider[best_provider])} "
-                f"vs {other.title()} {_format_percent_1(by_provider[other])}."
-            )
-        latency_text = ""
-        if "kimi" in latency_by_provider and "deepseek" in latency_by_provider:
-            latency_text = (
-                f" Average latency was about {latency_by_provider['kimi'] / 1000:.1f}s for Kimi "
-                f"vs {latency_by_provider['deepseek'] / 1000:.1f}s for DeepSeek."
-            )
-        key_findings.append(
-            {
-                "title": "Kimi was more accurate but slower and more costly",
-                "metric": _format_percent_1(by_provider.get(best_provider)),
-                "body": (
-                    f"{comparison_text}{latency_text} Cost notes are kept in the Day 12 API cost estimate."
-                ).strip(),
-            }
-        )
-
-    if context_aware is not None and strict_scaffolded is not None:
-        strict_delta = (strict_scaffolded - context_aware) * 100
-        key_findings.append(
-            {
-                "title": "Strict scaffolding did not improve accuracy further",
-                "metric": f"{_format_percent_1(strict_scaffolded)}",
-                "body": (
-                    "Strict-scaffolded prompting was slightly below context-aware prompting "
-                    f"({strict_delta:.1f} percentage points), suggesting a small accuracy trade-off "
-                    "from extra anti-leakage constraints."
-                ),
-            }
-        )
-
-    if function_recall:
-        logic_text = (
-            f" Logic Error recall was {_format_percent_1(logic_recall['recall'])}."
-            if logic_recall
-            else ""
-        )
-        key_findings.append(
-            {
-                "title": "Function vs Logic boundaries need refinement",
-                "metric": f"{function_recall['correct']}/{function_recall['total']} Function Error",
-                "body": (
-                    f"Function Error recall was {_format_percent_1(function_recall['recall'])}; "
-                    f"misclassifications often went to {function_recall['confusions'] or 'nearby categories'}."
-                    f"{logic_text}"
-                ),
-            }
-        )
-
-    return {
-        "findings_intro": (
-            "These conclusions summarise what the Day 12 real LLM run shows, "
-            "so the page is not just a raw metric table."
-        ),
-        "key_findings": key_findings,
-        "prompt_rows": prompt_rows,
-        "provider_rows": provider_rows,
-        "cost_note": "Estimated retained Day 12 API spend: about USD 1.38-1.72; see day12_api_cost_estimate.md.",
-    }
-
-
-def _build_peci_ax_report(payload, report_config, markdown_path, summary_path):
-    summary = payload.get("summary", {}) or {}
-    providers = summary.get("providers", []) or []
-    per_provider = summary.get("per_provider", {}) or {}
-    total_results = summary.get("total_results") or 0
-    ai_error_count = summary.get("ai_error_count") or 0
-    valid_output_rate = (
-        (total_results - ai_error_count) / total_results if total_results else None
-    )
-
-    provider_rows = []
-    for provider in providers:
-        provider_summary = per_provider.get(provider, {}) or {}
-        latency_ms = provider_summary.get("average_latency_ms")
-        provider_rows.append(
-            {
-                "provider": provider.title(),
-                "accuracy": _format_percent_1(provider_summary.get("accuracy")),
-                "latency": f"{float(latency_ms) / 1000:.1f}s"
-                if latency_ms is not None
-                else "N/A",
-            }
-        )
-
-    ground_truth_counts = summary.get("ground_truth_counts", {}) or {}
-    confusion_rows = summary.get("confusion_matrix", []) or []
-    outside_total = ground_truth_counts.get("outside_peci_scope", 0) or 0
-    outside_correct = sum(
-        row.get("count", 0) or 0
-        for row in confusion_rows
-        if row.get("ground_truth") == "outside_peci_scope"
-        and row.get("predicted") == "outside_peci_scope"
-    )
-    in_scope_total = sum(
-        count
-        for label, count in ground_truth_counts.items()
-        if label != "outside_peci_scope"
-    )
-    in_scope_correct = sum(
-        row.get("count", 0) or 0
-        for row in confusion_rows
-        if row.get("ground_truth") != "outside_peci_scope"
-        and row.get("ground_truth") == row.get("predicted")
-    )
-    provider_count = len(providers) or 1
-    outside_sample_count = outside_total // provider_count
-    sample_count = summary.get("sample_count") or 0
-
-    key_findings = [
-        {
-            "title": "Current taxonomy result",
-            "metric": _format_percent_1(summary.get("overall_accuracy")),
-            "body": (
-                "This is the first independent evaluation of the current PECI A-X taxonomy. "
-                "It is separate from the Day 12 legacy-taxonomy result."
-            ),
-        },
-        {
-            "title": "PECI scope is the main limitation",
-            "metric": f"{outside_sample_count}/{sample_count} outside scope",
-            "body": (
-                f"In-scope accuracy was {_format_percent_1(in_scope_correct / in_scope_total) if in_scope_total else 'N/A'}, "
-                f"while outside-scope recognition was {_format_percent_1(outside_correct / outside_total) if outside_total else 'N/A'}."
-            ),
-        },
-        {
-            "title": "Provider comparison",
-            "metric": _format_percent_1((per_provider.get("kimi") or {}).get("accuracy")),
-            "body": (
-                f"Kimi reached {_format_percent_1((per_provider.get('kimi') or {}).get('accuracy'))}; "
-                f"DeepSeek reached {_format_percent_1((per_provider.get('deepseek') or {}).get('accuracy'))}."
-            ),
-        },
-        {
-            "title": "Structured-output repair",
-            "metric": f"{summary.get('json_repair_success_count', 0)} repaired",
-            "body": (
-                f"One malformed JSON response was repaired successfully. "
-                f"The remaining {ai_error_count} errors were empty responses or provider timeouts."
-            ),
-        },
-    ]
-
-    return {
-        **report_config,
-        "findings_intro": (
-            "This card reports the current PECI A-X classifier only. Its 50.0% result "
-            "must not be mixed with the Day 12 legacy-taxonomy accuracy."
-        ),
-        "key_findings": key_findings,
-        "prompt_rows": [
-            {
-                "prompt": "Strict-scaffolded",
-                "accuracy": _format_percent_1(summary.get("overall_accuracy")),
-                "note": "The current live prompt; this run is not a three-prompt comparison.",
-            }
-        ],
-        "provider_rows": provider_rows,
-        "cost_note": "Cost was not configured for this run; no A-X cost figure is reported.",
-        "summary_path": str(markdown_path if markdown_path.exists() else summary_path),
-        "summary_label": report_config["summary_filename"]
-        if markdown_path.exists()
-        else report_config["filename"],
-        "dataset_size": summary.get("sample_count"),
-        "providers": ", ".join(providers),
-        "prompt_versions": ", ".join(summary.get("prompt_versions", []) or []),
-        "total_results": total_results,
-        "category_accuracy": _format_percent(summary.get("overall_accuracy")),
-        "quality_metric_label": "Valid output",
-        "json_compliance_rate": _format_percent(valid_output_rate),
-        "solution_leakage_rate": _format_percent(summary.get("solution_leakage_rate")),
-        "runtime_evidence_usage_rate": "N/A",
-        "average_latency_ms": "N/A",
-        "ai_error_count": ai_error_count,
-        "reviewed_count": None,
-        "review_coverage_rate": "N/A",
-        "average_helpfulness_score": "N/A",
-        "average_actionability_score": "N/A",
-    }
-
-
-def _load_final_evaluation_reports():
-    reports = []
-    report_dir = Path(settings.BASE_DIR) / "evaluation_reports"
-
-    for report_config in FINAL_EVALUATION_REPORTS:
-        summary_path = report_dir / report_config["filename"]
-        markdown_path = report_dir / report_config["summary_filename"]
-        if not summary_path.exists():
-            continue
-
-        try:
-            payload = json.loads(summary_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-
-        if report_config["filename"] == "peci_ax_evaluation_summary.json":
-            reports.append(
-                _build_peci_ax_report(
-                    payload,
-                    report_config,
-                    markdown_path,
-                    summary_path,
-                )
-            )
-            continue
-
-        automatic = payload.get("automatic_metrics", {}) or {}
-        human = payload.get("human_review_metrics", {}) or {}
-        run = payload.get("run", {}) or {}
-        report_display = (
-            _build_day12_display(payload)
-            if report_config["filename"].startswith("day12_deepseek_kimi")
-            else {}
-        )
-        reports.append(
-            {
-                **report_config,
-                **report_display,
-                "summary_path": str(markdown_path if markdown_path.exists() else summary_path),
-                "summary_label": report_config["summary_filename"]
-                if markdown_path.exists()
-                else report_config["filename"],
-                "dataset_size": run.get("dataset_size"),
-                "providers": ", ".join(run.get("providers", [])),
-                "prompt_versions": ", ".join(run.get("prompt_versions", [])),
-                "total_results": automatic.get("total_results"),
-                "category_accuracy": _format_percent(automatic.get("category_accuracy")),
-                "json_compliance_rate": _format_percent(automatic.get("json_compliance_rate")),
-                "solution_leakage_rate": _format_percent(automatic.get("solution_leakage_rate")),
-                "runtime_evidence_usage_rate": _format_percent(
-                    automatic.get("runtime_evidence_usage_rate")
-                ),
-                "average_latency_ms": _format_number(automatic.get("average_latency_ms")),
-                "ai_error_count": automatic.get("ai_error_count"),
-                "reviewed_count": human.get("reviewed_count"),
-                "review_coverage_rate": _format_percent(human.get("review_coverage_rate")),
-                "average_helpfulness_score": _format_number(
-                    human.get("average_helpfulness_score")
-                ),
-                "average_actionability_score": _format_number(
-                    human.get("average_actionability_score")
-                ),
-            }
-        )
-
-    return reports
-
-
-def _latest_run_summary_for_display(evaluation_run):
-    summary = dict(evaluation_run.summary or {})
-    if summary.get("overall_accuracy") is None:
-        return summary
-
-    total_results = summary.get("total_results") or 0
-    ai_error_count = summary.get("ai_error_count") or 0
-    per_provider = summary.get("per_provider", {}) or {}
-    latency_total = 0.0
-    latency_count = 0
-    for provider_summary in per_provider.values():
-        result_count = provider_summary.get("results") or 0
-        average_latency = provider_summary.get("average_latency_ms")
-        if result_count and average_latency is not None:
-            latency_total += float(average_latency) * result_count
-            latency_count += result_count
-
-    summary["category_accuracy"] = _format_percent(summary.get("overall_accuracy"))
-    summary["solution_leakage_rate"] = _format_percent(
-        summary.get("solution_leakage_rate")
-    )
-    summary["json_compliance_rate"] = _format_percent(
-        (total_results - ai_error_count) / total_results if total_results else None
-    )
-    summary["runtime_evidence_usage_rate"] = "Included in prompt"
-    summary["average_latency_ms"] = (
-        f"{latency_total / latency_count / 1000:.1f}s" if latency_count else "N/A"
-    )
-    return summary
 
 
 @login_required
@@ -785,6 +302,12 @@ def _generate_feedback_record(
         "problem_statement": problem_statement,
         "lecture_objective": lecture_objective,
         "student_code": student_code,
+        "code_lines": student_code.splitlines() or [""],
+        "code_review": build_code_review(
+            student_code,
+            execution_result.get("execution_status", ""),
+            execution_result.get("stderr", ""),
+        ),
         "topic_tags": topic_tags,
         "sample_input": sample_input,
         "expected_output": expected_output,
@@ -839,6 +362,17 @@ def student_submit(request):
         return redirect("instructor_dashboard")
 
     questions = Question.objects.filter(is_active=True)
+    topic_focus = None
+    if request.method == "GET" and not request.GET.get("retry"):
+        topic_id = request.GET.get("topic", "").strip()
+        if topic_id:
+            topic_focus = TOPIC_TAXONOMY.get(topic_id)
+            if topic_focus is None:
+                raise Http404("Unknown fixed topic.")
+            questions = [
+                question for question in questions
+                if topic_id in parse_topic_tags(question.topic_tags)
+            ]
     sorted_questions, question_queryset, status_map = _build_student_question_status(
         request.user,
         questions,
@@ -893,6 +427,8 @@ def student_submit(request):
                 "question": retry_record.question,
                 "student_code": retry_record.student_code,
             }
+        elif topic_focus and sorted_questions:
+            initial["question"] = sorted_questions[0]
         form = StudentCodeSubmitForm(
             initial=initial,
             question_queryset=question_queryset,
@@ -906,6 +442,7 @@ def student_submit(request):
             "form": form,
             "questions": sorted_questions,
             "retry_record": retry_record,
+            "topic_focus": topic_focus,
         },
     )
 
@@ -977,29 +514,6 @@ def analytics_dashboard(request):
 
 
 @login_required
-def evaluation_dashboard(request):
-    _require_staff(request.user)
-
-    latest_run = EvaluationRun.objects.prefetch_related("results").first()
-    runs = EvaluationRun.objects.all()[:10]
-    latest_results = []
-    if latest_run:
-        latest_results = latest_run.results.all()[:12]
-
-    return render(
-        request,
-        "feedback_app/evaluation_dashboard.html",
-        {
-            "latest_run": latest_run,
-            "final_reports": _load_final_evaluation_reports(),
-            "runs": runs,
-            "latest_results": latest_results,
-            "summary": _latest_run_summary_for_display(latest_run) if latest_run else {},
-        },
-    )
-
-
-@login_required
 def student_profile(request, user_id):
     _require_staff(request.user)
 
@@ -1027,6 +541,31 @@ def my_profile(request):
             "profile": build_student_profile(request.user),
             "is_own_profile": True,
         },
+    )
+
+
+@login_required
+def student_current_status(request, user_id):
+    _require_staff(request.user)
+
+    User = get_user_model()
+    student = get_object_or_404(User, pk=user_id, is_staff=False)
+    return render(
+        request,
+        "feedback_app/current_status.html",
+        {"status": build_current_status(student), "is_own_profile": False},
+    )
+
+
+@login_required
+def my_current_status(request):
+    if request.user.is_staff:
+        return redirect("analytics_dashboard")
+
+    return render(
+        request,
+        "feedback_app/current_status.html",
+        {"status": build_current_status(request.user), "is_own_profile": True},
     )
 
 
@@ -1059,6 +598,7 @@ def history(request):
     questions = []
     selected_student_id = None
     selected_question_id = None
+    selected_attempt_id = request.GET.get("attempt", "").strip()
 
     if not request.user.is_staff:
         records = records.filter(user=request.user)
@@ -1082,12 +622,54 @@ def history(request):
         if selected_question_id:
             records = records.filter(question_id=selected_question_id)
 
-    records = records[:20]
+    if selected_attempt_id:
+        try:
+            selected_attempt_pk = int(selected_attempt_id)
+        except ValueError as exc:
+            raise Http404("Submission not found.") from exc
+        selected_record = get_object_or_404(records, pk=selected_attempt_pk)
+        if selected_record.trajectory_id:
+            records = records.filter(
+                user_id=selected_record.user_id,
+                question_id=selected_record.question_id,
+                trajectory_id=selected_record.trajectory_id,
+            )
+        else:
+            records = records.filter(pk=selected_record.pk)
+
+    history_groups = []
+    groups_by_key = {}
+    for record in records.order_by("-created_at", "-id").iterator():
+        key = (
+            (record.user_id, record.question_id, record.trajectory_id)
+            if record.trajectory_id
+            else ("single", record.pk)
+        )
+        group = groups_by_key.get(key)
+        if group is None:
+            if len(history_groups) >= 20:
+                continue
+            group = {
+                "latest_record": record,
+                "records": [],
+                "is_solved": _latest_record_is_solved(record),
+            }
+            groups_by_key[key] = group
+            history_groups.append(group)
+        group["records"].append(record)
+
+    for group in history_groups:
+        group["records"].reverse()
+        group["attempt_count"] = len(group["records"])
+
+    records = [record for group in history_groups for record in group["records"]]
     return render(
         request,
         "feedback_app/history.html",
         {
             "records": records,
+            "history_groups": history_groups,
+            "selected_attempt_id": selected_attempt_id,
             "students": students,
             "questions": questions,
             "selected_student_id": selected_student_id,
@@ -1105,4 +687,14 @@ def history_detail(request, record_id):
     if not request.user.is_staff and record.user_id != request.user.id:
         raise PermissionDenied("You can only view your own submission records.")
 
-    return render(request, "feedback_app/history_detail.html", {"record": record})
+    return render(
+        request,
+        "feedback_app/history_detail.html",
+        {
+            "record": record,
+            "code_lines": record.student_code.splitlines() or [""],
+            "code_review": build_code_review(
+                record.student_code, record.execution_status, record.execution_stderr
+            ),
+        },
+    )

@@ -1,0 +1,33 @@
+<section class="review-feedback section-gap" aria-labelledby="review-feedback-heading">
+    <div class="review-section-heading">
+        <div>
+            <div class="eyebrow">Feedback Summary</div>
+            <h2 id="review-feedback-heading">{% if request.user.is_staff %}{{ record.llm_model_name|default:record.llm_used }}{% else %}Tutor Response{% endif %}</h2>
+        </div>
+        {% if request.user.is_staff %}
+            <div class="review-provider-meta">Prompt: {{ record.prompt_version|default:"not recorded" }}<br>Leakage flag: {{ record.solution_leakage_flag|yesno:"flagged,not flagged,not recorded" }}</div>
+        {% endif %}
+    </div>
+
+    {% if record.ai_error %}
+        <div class="alert alert-danger"><strong>AI error:</strong> {{ record.ai_error }}</div>
+    {% elif record.feedback_text or record.error_category %}
+        <div class="review-classification{% if request.user.is_staff %} has-confidence{% endif %}">
+            <div><span class="eyebrow">Error Classification</span><strong>{{ record.error_category|default:"not classified" }}</strong>{% if record.classification_outcome %}<small>Outcome: {{ record.classification_outcome }}</small>{% endif %}</div>
+            <div><span class="eyebrow">Concept</span><strong>{{ record.concept_reference|default:"not specified" }}</strong></div>
+            <div><span class="eyebrow">Feedback Level</span><strong>{{ record.feedback_level|default:"not specified" }}</strong></div>
+            {% if request.user.is_staff %}<div><span class="eyebrow">AI self-reported confidence</span><strong>{{ record.confidence|default:"not recorded" }}</strong><small>Not a calibrated reliability score</small></div>{% endif %}
+        </div>
+
+        {% if record.feedback_text %}<div class="review-response" translate="no" data-no-translate>{{ record.feedback_text }}</div>{% endif %}
+
+        {% if record.misconception or record.suggested_next_step %}
+            <div class="review-followups">
+                {% if record.misconception %}<div><div class="eyebrow">Misconception</div><p translate="no" data-no-translate>{{ record.misconception }}</p></div>{% endif %}
+                {% if record.suggested_next_step %}<div><div class="eyebrow">Suggested Next Step</div><p translate="no" data-no-translate>{{ record.suggested_next_step }}</p></div>{% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-secondary">This submission does not contain structured AI feedback.</div>
+    {% endif %}
+</section>

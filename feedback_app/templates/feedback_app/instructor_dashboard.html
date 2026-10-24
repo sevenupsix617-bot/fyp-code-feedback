@@ -5,6 +5,62 @@
 {% block page_title %}Instructor Dashboard{% endblock %}
 {% block page_subtitle %}Question bank management, evaluator workflow, and recent feedback evidence.{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dashboard-taxonomy-list {
+        column-gap: 2rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-taxonomy-item {
+        align-items: baseline;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        min-width: 0;
+        padding: 0.7rem 0;
+    }
+
+    .dashboard-breakdown-list {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .dashboard-breakdown-item {
+        border-top: 1px solid var(--line);
+        min-width: 0;
+        padding-top: 0.75rem;
+    }
+
+    .dashboard-breakdown-item strong {
+        display: block;
+        font-size: 1.3rem;
+        line-height: 1.2;
+    }
+
+    .dashboard-breakdown-item span {
+        color: var(--muted);
+        display: block;
+        font-size: 0.87rem;
+        margin-top: 0.25rem;
+        overflow-wrap: anywhere;
+    }
+
+    .dashboard-data-table {
+        min-width: 800px;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-taxonomy-list {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block page_actions %}
     <a href="{% url 'admin:feedback_app_question_add' %}" class="btn btn-outline-primary">
         <i data-lucide="plus" class="icon-sm" aria-hidden="true"></i>
@@ -17,10 +73,6 @@
     <a href="{% url 'experiment' %}" class="btn btn-primary">
         <i data-lucide="flask-conical" class="icon-sm" aria-hidden="true"></i>
         Experiment Interface
-    </a>
-    <a href="{% url 'evaluation_dashboard' %}" class="btn btn-outline-secondary">
-        <i data-lucide="bar-chart-3" class="icon-sm" aria-hidden="true"></i>
-        Evaluation
     </a>
 {% endblock %}
 
@@ -56,59 +108,63 @@
         </div>
     </div>
 
-    <div class="row g-4 section-gap">
-        <div class="col-lg-5">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Literature-derived Taxonomy</div>
-                    <h2 class="h5 mb-0">Common PECI Error Categories</h2>
-                </div>
-                <div class="panel-body">
-                    {% for item in common_errors %}
-                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
-                            <span>{{ item.error_category }}</span>
-                            <span class="badge badge-soft">{{ item.total }}</span>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No new submissions have a PECI classification yet.</p>
-                    {% endfor %}
-                    <p class="small text-muted mt-3 mb-0">The page shows the exact category names from PECI Table 1. Source codes are stored internally only. Runtime exceptions and legacy Day 12 labels are stored separately.</p>
-                </div>
-            </section>
+    <section class="panel section-gap">
+        <div class="panel-header">
+            <div class="eyebrow">Literature-derived Taxonomy</div>
+            <h2 class="h5 mb-0">Common PECI Error Categories</h2>
         </div>
-        <div class="col-lg-3">
-            <section class="panel h-100">
+        <div class="panel-body">
+            <div class="dashboard-taxonomy-list">
+                {% for item in common_errors %}
+                    <div class="dashboard-taxonomy-item">
+                        <span>{{ item.error_category }}</span>
+                        <span class="badge badge-soft">{{ item.total }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-muted mb-0">No new submissions have a PECI classification yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="row g-4 section-gap">
+        <div class="col-lg-4">
+            <section class="panel">
                 <div class="panel-header">
                     <div class="eyebrow">Question Defaults</div>
                     <h2 class="h5 mb-0">Provider Defaults</h2>
                 </div>
                 <div class="panel-body">
-                    {% for item in provider_breakdown %}
-                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
-                            <span>{{ item.default_llm_provider }}</span>
-                            <span class="badge badge-soft">{{ item.total }}</span>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No question providers set.</p>
-                    {% endfor %}
+                    <div class="dashboard-breakdown-list">
+                        {% for item in provider_breakdown %}
+                            <div class="dashboard-breakdown-item">
+                                <strong>{{ item.total }}</strong>
+                                <span>{{ item.default_llm_provider }}</span>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted mb-0">No question providers set.</p>
+                        {% endfor %}
+                    </div>
                 </div>
             </section>
         </div>
-        <div class="col-lg-4">
-            <section class="panel h-100">
+        <div class="col-lg-8">
+            <section class="panel">
                 <div class="panel-header">
                     <div class="eyebrow">Runtime Evidence</div>
                     <h2 class="h5 mb-0">Output Comparison</h2>
                 </div>
                 <div class="panel-body">
-                    {% for item in output_breakdown %}
-                        <div class="d-flex justify-content-between gap-3 border-bottom py-2">
-                            <span>{{ item.output_comparison_status }}</span>
-                            <span class="badge badge-soft">{{ item.total }}</span>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No output comparison records yet.</p>
-                    {% endfor %}
+                    <div class="dashboard-breakdown-list">
+                        {% for item in output_breakdown %}
+                            <div class="dashboard-breakdown-item">
+                                <strong>{{ item.total }}</strong>
+                                <span>{{ item.output_comparison_status }}</span>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted mb-0">No output comparison records yet.</p>
+                        {% endfor %}
+                    </div>
                 </div>
             </section>
         </div>
@@ -127,7 +183,7 @@
         </div>
         <div class="panel-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover dashboard-data-table mb-0">
                     <thead>
                         <tr>
                             <th>Question</th>
@@ -188,7 +244,7 @@
         </div>
         <div class="panel-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover dashboard-data-table mb-0">
                     <thead>
                         <tr>
                             <th>Question</th>

@@ -1,0 +1,18 @@
+{% if request.user.is_staff %}
+    <details class="review-debug section-gap">
+        <summary>Debug Evidence</summary>
+        <div class="review-debug-grid">
+            <div><span>JSON compliance</span><strong>{{ record.json_compliance|yesno:"yes,no,not recorded" }}</strong></div>
+            <div><span>Schema status</span><strong>{{ record.schema_validation_status|default:"not recorded" }}</strong></div>
+            <div><span>Schema version</span><strong>{{ record.feedback_schema_version|default:"not recorded" }}</strong></div>
+            <div><span>Runtime evidence</span><strong>{{ record.uses_runtime_evidence|yesno:"yes,no,not recorded" }}</strong></div>
+            <div><span>Token usage</span><strong>{{ record.llm_token_usage.total_tokens|default:"not recorded" }}</strong></div>
+            <div><span>Estimated cost</span><strong>{{ record.estimated_cost|default:"not configured" }}</strong></div>
+        </div>
+        {% if record.schema_validation_notes %}<p class="review-schema-notes"><strong>Schema notes:</strong> {{ record.schema_validation_notes }}</p>{% endif %}
+        <details>
+            <summary>Raw AI response</summary>
+            <pre class="code-block" translate="no" data-no-translate><code>{{ record.raw_ai_response }}</code></pre>
+        </details>
+    </details>
+{% endif %}

@@ -11,7 +11,7 @@ from feedback_app.peci_ax_evaluation import (
 
 class Command(BaseCommand):
     help = (
-        "Run the independent PECI A-X evaluation: 55 confirmed Refactory samples x "
+        "Run the revised-taxonomy evaluation: 55 confirmed Refactory samples x "
         "DeepSeek and Kimi x strict_scaffolded."
     )
 
@@ -67,8 +67,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not options["run_llm"]:
             raise CommandError(
-                "This command is the real 110-call A-X evaluation. Review and complete "
-                "the confirmed CSV first, then rerun with --run-llm."
+                "This command makes real paid provider calls for the revised taxonomy. "
+                "Review the confirmed CSV and provider balances first, then rerun with --run-llm."
             )
 
         confirmed_csv = Path(

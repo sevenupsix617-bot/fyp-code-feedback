@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from feedback_app.feedback_schema import FEEDBACK_SCHEMA_VERSION
+from feedback_app.feedback_schema import FEEDBACK_JSON_SCHEMA
 from feedback_app.evaluation_runner import (
     DEFAULT_EVALUATION_PROMPT_VERSIONS,
     DEFAULT_EVALUATION_PROVIDERS,
@@ -110,12 +110,13 @@ class Command(BaseCommand):
                 f"Unknown prompt versions: {', '.join(unknown_prompt_versions)}"
             )
 
-        if options["run_llm"] and FEEDBACK_SCHEMA_VERSION == "feedback_schema_v3_peci":
+        if options["run_llm"] and "classification_outcome" in FEEDBACK_JSON_SCHEMA["required"]:
             raise CommandError(
-                "Real LLM evaluation is blocked because evaluation_samples.json "
-                "contains legacy v1/v2 ground-truth labels, not PECI A-X codes. "
-                "Create and review a separate v3 A-X annotation file before running "
-                "new API evaluation. The offline dry run remains available."
+                "Real LLM evaluation is blocked in this legacy runner because "
+                "evaluation_samples.json contains legacy v1/v2 ground-truth labels. "
+                "Use run_peci_ax_evaluation with the researcher-confirmed revised "
+                "ground-truth CSV for the 55-sample model evaluation. The offline "
+                "dry run remains available."
             )
 
         try:
