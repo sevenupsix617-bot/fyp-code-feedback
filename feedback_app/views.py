@@ -1,11 +1,13 @@
 import json
 import time
+from urllib.parse import urlencode
 from collections import defaultdict
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Case, Count, IntegerField, When
+from django.core.paginator import Paginator
+from django.db.models import Case, Count, IntegerField, When, Q, Max
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -15,6 +17,7 @@ from .analytics import (
     build_current_status,
     build_skill_timeline,
     build_student_profile,
+    stored_error_identity,
 )
 from .code_runner import run_python_code
 from .code_review import build_code_review
@@ -514,6 +517,29 @@ def analytics_dashboard(request):
 
 
 @login_required
+def student_directory(request):
+    _require_staff(request.user)
+    query = request.GET.get("q", "").strip()[:100]
+    students = get_user_model().objects.filter(is_staff=False, is_active=True)
+    if query:
+        students = students.filter(
+            Q(username__icontains=query) | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+        )
+    students = students.annotate(
+        attempt_total=Count("codefeedbackrecord"),
+        question_total=Count("codefeedbackrecord__question", distinct=True),
+        solved_total=Count("codefeedbackrecord", filter=Q(codefeedbackrecord__solved=True)),
+        last_attempt=Max("codefeedbackrecord__created_at"),
+    ).order_by("username", "id")
+    page = Paginator(students, 5).get_page(request.GET.get("page"))
+    return render(request, "feedback_app/student_directory.html", {
+        "student_page": page, "search_query": query,
+        "directory_query": urlencode({"q": query}),
+    })
+
+
+@login_required
 def student_profile(request, user_id):
     _require_staff(request.user)
 
@@ -599,6 +625,8 @@ def history(request):
     selected_student_id = None
     selected_question_id = None
     selected_attempt_id = request.GET.get("attempt", "").strip()
+    evidence_filter = ""
+    evidence_params = {}
 
     if not request.user.is_staff:
         records = records.filter(user=request.user)
@@ -621,6 +649,31 @@ def history(request):
             records = records.filter(user_id=selected_student_id)
         if selected_question_id:
             records = records.filter(question_id=selected_question_id)
+
+        # Evidence links use the same stored diagnoses and fixed question tags
+        # as class analytics; no record or historical category is rewritten.
+        topic_id = request.GET.get("topic", "").strip()
+        source = request.GET.get("source", "").strip()
+        category = request.GET.get("category", "").strip()
+        if request.GET.get("class_practice") == "1":
+            records = records.filter(user__is_staff=False, user__is_active=True, question__isnull=False)
+            evidence_params["class_practice"] = "1"
+        if topic_id:
+            from .taxonomy import TOPIC_TAXONOMY, parse_topic_tags
+            if topic_id not in TOPIC_TAXONOMY:
+                raise Http404("Unknown fixed topic.")
+            ids = [r.pk for r in records if r.question and topic_id in parse_topic_tags(r.question.topic_tags)]
+            records = records.filter(pk__in=ids)
+            evidence_filter = "Topic practice records: " + TOPIC_TAXONOMY[topic_id]["label"]
+            evidence_params["topic"] = topic_id
+        if source and category:
+            if source not in {"peci", "project", "legacy"}:
+                raise Http404("Unknown classification source.")
+            ids = [r.pk for r in records if (identity := stored_error_identity(r))
+                   and identity[0] == source and identity[1] == category]
+            records = records.filter(pk__in=ids)
+            evidence_filter = f"Stored error records: {source} / {category}"
+            evidence_params.update(source=source, category=category)
 
     if selected_attempt_id:
         try:
@@ -674,6 +727,8 @@ def history(request):
             "questions": questions,
             "selected_student_id": selected_student_id,
             "selected_question_id": selected_question_id,
+            "evidence_filter": evidence_filter,
+            "evidence_params": evidence_params,
         },
     )
 

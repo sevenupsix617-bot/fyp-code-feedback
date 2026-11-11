@@ -7,6 +7,7 @@
 
 {% block page_actions %}
     {% if request.user.is_staff %}
+        <a href="{% url 'student_directory' %}" class="btn btn-outline-secondary">Student Directory</a>
         <a href="{% url 'student_current_status' profile.user.id %}" class="btn btn-outline-primary">
             <i data-lucide="target" class="icon-sm" aria-hidden="true"></i>
             Current Status
@@ -150,7 +151,8 @@
         </section>
     {% endwith %}
 
-    <div class="row g-4 section-gap">
+    <p class="small text-muted">The lists below count stored feedback mentions and error occurrences, including earlier attempts. Current Status provides the recent Topic estimate.</p>
+    <div class="row g-4 section-gap" id="profile-error-patterns">
         <div class="col-lg-4">
             <section class="panel h-100">
                 <div class="panel-header">
@@ -173,7 +175,7 @@
             <section class="panel h-100">
                 <div class="panel-header">
                     <div class="eyebrow">Weak Knowledge</div>
-                    <h2 class="h5 mb-0">Weak Concepts</h2>
+                    <h2 class="h5 mb-0">Weak Topics</h2>
                 </div>
                 <div class="panel-body">
                     {% for item in profile.weak_concepts %}
@@ -182,7 +184,7 @@
                             <span class="badge badge-danger-soft">{{ item.total }}</span>
                         </div>
                     {% empty %}
-                        <p class="text-muted mb-0">No weak concept has enough evidence yet.</p>
+                        <p class="text-muted mb-0">No unresolved topic mentions have been recorded.</p>
                     {% endfor %}
                 </div>
             </section>
@@ -191,7 +193,7 @@
             <section class="panel h-100">
                 <div class="panel-header">
                     <div class="eyebrow">Mastery Evidence</div>
-                    <h2 class="h5 mb-0">Mastered Concepts</h2>
+                    <h2 class="h5 mb-0">Topics in Solved Attempts</h2>
                 </div>
                 <div class="panel-body">
                     {% for item in profile.mastered_concepts %}
@@ -200,7 +202,7 @@
                             <span class="badge badge-success-soft">{{ item.total }}</span>
                         </div>
                     {% empty %}
-                        <p class="text-muted mb-0">No mastered concept has been recorded yet.</p>
+                        <p class="text-muted mb-0">No topic mentions in solved attempts have been recorded.</p>
                     {% endfor %}
                 </div>
             </section>

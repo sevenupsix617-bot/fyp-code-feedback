@@ -7,7 +7,11 @@ from django.db.models import Count, Q
 
 from .feedback_schema import PECI_ERROR_CODES
 from .models import CodeFeedbackRecord, Question
-from .taxonomy import TOPIC_TAXONOMY, parse_topic_tags
+from .taxonomy import (
+    TOPIC_TAXONOMY, PROJECT_ERROR_TAXONOMY, PECI_ERROR_TAXONOMY, parse_topic_tags,
+)
+from django.urls import reverse
+from urllib.parse import urlencode
 
 
 NO_ERROR = "No Error"
@@ -706,124 +710,144 @@ def build_question_difficulty():
     return questions
 
 
-def build_class_analytics():
-    User = get_user_model()
-    submission_count = CodeFeedbackRecord.objects.count()
-    classified_count = CodeFeedbackRecord.objects.exclude(classification_outcome="").count()
-    non_success_count = CodeFeedbackRecord.objects.filter(UNRESOLVED_FILTER).count()
-    question_count = Question.objects.count()
-
-    peci_error_count = CodeFeedbackRecord.objects.filter(
-        classification_outcome="peci_error"
-    ).exclude(peci_error_code="").count()
-    common_errors = _add_percent(
-        CodeFeedbackRecord.objects.filter(classification_outcome="peci_error")
-        .exclude(peci_error_code="")
-        .values("peci_error_code", "peci_error_label")
-        .annotate(total=Count("id"))
-        .order_by("-total", "peci_error_code")[:10],
-        denominator=peci_error_count,
-    )
-    for item in common_errors:
-        item["error_category"] = item["peci_error_label"]
-
-    concept_weakness = _add_percent(
-        CodeFeedbackRecord.objects.filter(UNRESOLVED_FILTER)
-        .exclude(concept_reference="")
-        .exclude(concept_reference="Unknown")
-        .values("concept_reference")
-        .annotate(total=Count("id"))
-        .order_by("-total", "concept_reference")[:8],
-        denominator=non_success_count,
+def _class_practice_records():
+    """Active, identified student practice only; exclude staff/manual experiments."""
+    return (
+        CodeFeedbackRecord.objects.filter(
+            user__is_staff=False, user__is_active=True, question__isnull=False,
+        )
+        .select_related("question", "user")
+        .order_by("created_at", "id")
     )
 
-    question_difficulty = build_question_difficulty()
 
-    output_breakdown = _add_percent(
-        CodeFeedbackRecord.objects.exclude(output_comparison_status="")
-        .values("output_comparison_status")
-        .annotate(total=Count("id"))
-        .order_by("-total", "output_comparison_status")
+def stored_error_identity(record):
+    """Read the stored diagnosis, never infer a new label from runtime symptoms."""
+    if record.classification_outcome == "no_error":
+        return None
+    if record.classification_outcome == "peci_error" and record.peci_error_code in PECI_ERROR_TAXONOMY:
+        return ("peci", record.peci_error_code,
+                record.peci_error_label or record.error_category or record.peci_error_code,
+                "PECI A-X (stored)")
+    if record.classification_outcome in PROJECT_ERROR_TAXONOMY:
+        return ("project", record.classification_outcome,
+                record.error_category or PROJECT_ERROR_TAXONOMY[record.classification_outcome]["label"],
+                "Project supplement (stored)")
+    legacy = record.legacy_error_category or (
+        record.error_category if not record.classification_outcome else ""
     )
+    if legacy and legacy not in {NO_ERROR, "no_error", "Unknown"}:
+        return ("legacy", legacy, legacy, "Legacy annotation (unchanged)")
+    return None
 
-    students = User.objects.filter(is_staff=False, is_active=True).order_by("username")
-    student_profiles = [build_student_profile(student) for student in students]
-    student_profiles.sort(key=lambda item: (-item["attempt_total"], item["user"].username))
 
-    saved_next_steps = list(
-        CodeFeedbackRecord.objects.filter(UNRESOLVED_FILTER)
-        .exclude(suggested_next_step="")
-        .select_related("user", "question")
-        .order_by("-created_at")[:6]
-    )
+def build_class_evidence():
+    """Count people first; topic difficulty uses each person's latest tagged attempt."""
+    records = list(_class_practice_records())
+    latest = {}
+    practice = {topic_id: [] for topic_id in TOPIC_TAXONOMY}
+    errors = {}
+    sources = Counter()
+    for record in records:
+        for topic_id in parse_topic_tags(record.question.topic_tags):
+            latest[(record.user_id, topic_id)] = record
+            practice[topic_id].append(record)
+        identity = stored_error_identity(record)
+        if identity:
+            source, key, label, source_label = identity
+            group_key = (source, key, label)
+            row = errors.setdefault(group_key, {
+                "source": source, "category_key": key, "error_category": label,
+                "source_label": source_label, "users": set(), "attempt_count": 0,
+                "schema_versions": set(),
+            })
+            row["users"].add(record.user_id)
+            row["attempt_count"] += 1
+            row["schema_versions"].add(record.feedback_schema_version or "not recorded")
+            sources[source] += 1
 
-    instructional_recommendations = build_instructional_recommendations(
-        common_errors,
-        concept_weakness,
-        student_profiles,
-    )
+    topic_rows = []
+    for topic_id, definition in TOPIC_TAXONOMY.items():
+        all_attempts = practice[topic_id]
+        last_attempts = [record for (uid, tid), record in latest.items() if tid == topic_id]
+        practising = len(last_attempts)
+        affected = sum(not record.solved for record in last_attempts)
+        topic_rows.append({
+            "id": topic_id, "label": definition["label"],
+            "affected_students": affected, "practising_students": practising,
+            "attempt_count": len(all_attempts),
+            "unresolved_attempt_count": sum(not r.solved for r in all_attempts),
+            "percent": round(100 * affected / practising) if practising else 0,
+            "has_evidence": bool(practising),
+            "evidence_url": reverse("history") + "?" + urlencode({"topic": topic_id, "class_practice": "1"}),
+        })
+    topic_rows.sort(key=lambda row: (-row["affected_students"], -row["practising_students"], row["label"]))
 
+    error_rows = []
+    for row in errors.values():
+        row["student_count"] = len(row.pop("users"))
+        row["schema_versions"] = ", ".join(sorted(row["schema_versions"]))
+        row["evidence_url"] = reverse("history") + "?" + urlencode({
+            "source": row["source"], "category": row["category_key"], "class_practice": "1",
+        })
+        error_rows.append(row)
+    error_rows.sort(key=lambda row: (-row["student_count"], -row["attempt_count"], row["error_category"]))
     return {
-        "submission_count": submission_count,
-        "classified_count": classified_count,
-        "non_success_count": non_success_count,
-        "question_count": question_count,
-        "taxonomy_count": len(PECI_ERROR_CODES),
-        "common_errors": common_errors,
-        "concept_weakness": concept_weakness,
-        "question_difficulty": question_difficulty,
-        "student_profiles": student_profiles,
-        "output_breakdown": output_breakdown,
-        "saved_next_steps": saved_next_steps,
-        "instructional_recommendations": instructional_recommendations,
+        "topic_evidence": topic_rows, "common_errors": error_rows,
+        "practice_submission_count": len(records),
+        "practising_student_count": len({r.user_id for r in records}),
+        "follow_up_student_count": len({uid for (uid, tid), r in latest.items() if not r.solved}),
+        "classification_source_counts": dict(sources),
     }
 
 
-def build_instructional_recommendations(common_errors, concept_weakness, student_profiles):
-    recommendations = []
+def build_class_analytics():
+    evidence = build_class_evidence()
+    output_breakdown = _add_percent(
+        CodeFeedbackRecord.objects.exclude(output_comparison_status="")
+        .values("output_comparison_status").annotate(total=Count("id"))
+        .order_by("-total", "output_comparison_status")
+    )
+    return {
+        **evidence,
+        "student_count": get_user_model().objects.filter(is_staff=False, is_active=True).count(),
+        "submission_count": CodeFeedbackRecord.objects.count(),
+        "question_count": Question.objects.count(),
+        "taxonomy_count": len(PECI_ERROR_CODES),
+        "project_category_count": len(PROJECT_ERROR_TAXONOMY),
+        "question_difficulty": build_question_difficulty(),
+        "output_breakdown": output_breakdown,
+        "saved_next_steps": list(_class_practice_records().filter(solved=False)
+                                 .exclude(suggested_next_step="").order_by("-created_at", "-id")[:6]),
+        "instructional_recommendations": build_instructional_recommendations(
+            evidence["common_errors"], evidence["topic_evidence"],
+        ),
+    }
 
+
+def build_instructional_recommendations(common_errors, topic_evidence):
+    """Make traceable suggestions using student-level evidence, without an LLM."""
+    recommendations = []
+    top_topic = next((t for t in topic_evidence if t["affected_students"]), None)
+    if top_topic:
+        recommendations.append({
+            "title": f"Review {top_topic['label']}",
+            "body": (f"{top_topic['affected_students']} of {top_topic['practising_students']} practising "
+                     "students have an unresolved latest related attempt. Inspect their work before planning a review."),
+            "evidence_url": top_topic["evidence_url"],
+        })
     if common_errors:
         top_error = common_errors[0]
-        recommendations.append(
-            {
-                "title": f"Prioritise {top_error['error_category']}",
-                "body": (
-                    f"{top_error['total']} unresolved attempts are currently grouped here. "
-                    "Use this category for the next mini-review or worked debugging example."
-                ),
-            }
-        )
-
-    if concept_weakness:
-        top_concept = concept_weakness[0]
-        recommendations.append(
-            {
-                "title": f"Review {top_concept['concept_reference']}",
-                "body": (
-                    f"This concept appears in {top_concept['total']} unresolved attempts. "
-                    "The evidence comes from saved feedback records, not a free-form model summary."
-                ),
-            }
-        )
-
-    stable_students = [profile for profile in student_profiles if profile["trend_follow_up"]]
-    if stable_students:
-        names = ", ".join(profile["user"].username for profile in stable_students[:3])
-        recommendations.append(
-            {
-                "title": "Use profile trends for follow-up",
-                "body": (
-                    f"Check {names} first because their saved attempt trend is not clearly improving."
-                ),
-            }
-        )
-
+        recommendations.append({
+            "title": f"Discuss {top_error['error_category']}",
+            "body": (f"This stored category has appeared for {top_error['student_count']} distinct "
+                     f"student(s), across {top_error['attempt_count']} submissions. Check whether it recurs in recent work."),
+            "evidence_url": top_error["evidence_url"],
+        })
     if not recommendations:
-        recommendations.append(
-            {
-                "title": "Keep collecting submissions",
-                "body": "More saved attempts are needed before class-level teaching recommendations are reliable.",
-            }
-        )
-
+        recommendations.append({
+            "title": "Collect practice evidence",
+            "body": "Students without topic attempts are not counted as struggling. Invite practice before interpreting their knowledge.",
+            "evidence_url": reverse("student_directory"),
+        })
     return recommendations

@@ -1,0 +1,31 @@
+{% extends "feedback_app/base.html" %}
+{% block title %}Student Directory | AI Programming Feedback{% endblock %}
+{% block page_eyebrow %}Instructor Workspace{% endblock %}
+{% block page_title %}Student Directory{% endblock %}
+{% block page_subtitle %}Find a student, then inspect their eight Topics and saved attempt evidence.{% endblock %}
+{% block page_actions %}<a class="btn btn-outline-primary" href="{% url 'analytics_dashboard' %}">Class Analytics</a>{% endblock %}
+{% block content %}
+    <form method="get" class="d-flex flex-wrap align-items-end gap-2 section-gap" role="search">
+        <div class="flex-grow-1"><label for="student-search" class="form-label">Search students</label><input class="form-control" type="search" name="q" value="{{ search_query }}" maxlength="100" id="student-search" placeholder="Username or name"></div>
+        <button class="btn btn-primary" type="submit">Search</button>
+        {% if search_query %}<a class="btn btn-outline-secondary" href="{% url 'student_directory' %}">Clear</a>{% endif %}
+    </form>
+    <section class="panel" id="student-directory">
+        <div class="panel-header"><h2 class="h5 mb-1">{{ student_page.paginator.count }} student{{ student_page.paginator.count|pluralize }}{% if search_query %} found{% endif %}</h2><p class="small text-muted mb-0">Active student accounts only. Counts describe saved attempts, not assessed ability. Students without attempts have no practice evidence.</p></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>Student</th><th>Attempts</th><th>Questions</th><th>Solved attempts</th><th>Last activity</th><th>Details</th></tr></thead>
+                <tbody>{% for student in student_page %}
+                    <tr data-student="{{ student.id }}"><td class="fw-semibold">{{ student.username }}</td><td>{{ student.attempt_total }}</td><td>{{ student.question_total }}</td><td>{{ student.solved_total }}</td><td>{% if student.last_attempt %}{{ student.last_attempt|date:"Y-m-d" }}{% else %}<span class="text-muted">No evidence</span>{% endif %}</td><td><a class="btn btn-sm btn-outline-primary text-nowrap" href="{% url 'student_profile' student.id %}">View Profile</a></td></tr>
+                {% empty %}<tr><td colspan="6" class="text-muted py-4">No students match this search.</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    </section>
+    <nav class="d-flex align-items-center justify-content-between mt-3" aria-label="Student directory pages">
+        <span class="small text-muted">Page {{ student_page.number }} of {{ student_page.paginator.num_pages }} · {{ student_page.paginator.per_page }} students per page</span>
+        <div class="d-flex gap-2">
+            {% if student_page.has_previous %}<a class="btn btn-sm btn-outline-secondary" rel="prev" href="?{{ directory_query }}&amp;page={{ student_page.previous_page_number }}">Previous</a>{% endif %}
+            {% if student_page.has_next %}<a class="btn btn-sm btn-outline-primary" rel="next" href="?{{ directory_query }}&amp;page={{ student_page.next_page_number }}">Next</a>{% endif %}
+        </div>
+    </nav>
+{% endblock %}

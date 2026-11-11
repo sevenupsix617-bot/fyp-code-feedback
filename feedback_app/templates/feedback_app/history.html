@@ -38,8 +38,10 @@
 {% endblock %}
 
 {% block content %}
+    {% if evidence_filter %}<p class="alert alert-info">{{ evidence_filter }}. Original stored labels are preserved. Showing up to 20 recent practice groups.</p>{% endif %}
     {% if request.user.is_staff %}
         <form method="get" class="panel section-gap">
+            {% for key, value in evidence_params.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
             <div class="panel-body">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-5">

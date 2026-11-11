@@ -1,5 +1,7 @@
 # Day 14 Report Evidence Pack
 
+> 2026-10-24 review: this pack preserves historical Day 12/14 and frozen A-X results, not the current revised-taxonomy assessment. Use `evaluation_reports/peci_ax_evaluation_revised_final_summary.md` for the current 58/110 (52.73%) result. The context-aware condition changed several inputs together, so older wording below attributing the difference solely to runtime evidence must not be copied into the final report. Prompt percentages have been normalised to two decimal places; the underlying counts are unchanged.
+
 Revision: 2026-09-30 11:23:28 CST (Asia/Macau)
 
 用途：这个文件用于整理 final report、下周 supervisor demo 和答辩展示的证据链。中文部分帮助你理解要讲什么；英文段落可以作为报告草稿基础，但最终提交前仍需要按学校格式和你的写作风格再润色。
@@ -214,15 +216,15 @@ erDiagram
 | --- | ---: | ---: | ---: | ---: |
 | DeepSeek baseline | 43.6% | 100.0% | 0.0% | 0.0% |
 | DeepSeek context-aware | 89.1% | 100.0% | 0.0% | 100.0% |
-| DeepSeek strict-scaffolded | 87.3% | 100.0% | 0.0% | 100.0% |
+| DeepSeek strict-scaffolded | 87.27% | 100.0% | 0.0% | 100.0% |
 | Kimi baseline | 67.3% | 98.2% | 0.0% | 0.0% |
 | Kimi context-aware | 92.7% | 100.0% | 0.0% | 100.0% |
-| Kimi strict-scaffolded | 87.3% | 100.0% | 0.0% | 100.0% |
+| Kimi strict-scaffolded | 87.27% | 100.0% | 0.0% | 100.0% |
 
 ### 6.2 Aggregated Results
 
 - Overall category accuracy：77.88%。
-- Prompt-level accuracy：baseline 55.5% → context-aware 90.9% → strict-scaffolded 87.3%。
+- Prompt-level accuracy：baseline 55.45% → context-aware 90.91% → strict-scaffolded 87.27%。
 - Provider-level accuracy：Kimi 82.4%，DeepSeek 73.3%。
 - JSON compliance：99.7%，只有 1 条 invalid JSON。
 - Automatic solution leakage：0%。
@@ -232,9 +234,9 @@ erDiagram
 
 ### 6.3 主要结论
 
-1. Runtime evidence 是最明显的增益来源。baseline 平均准确率为 55.5%，context-aware 提升到 90.9%，说明把实际运行错误、expected/actual output 和 comparison status 放进 prompt 能显著提升错误识别。
+1. Runtime evidence 是最明显的增益来源。baseline 平均准确率为 55.45%，context-aware 提升到 90.91%，说明把实际运行错误、expected/actual output 和 comparison status 放进 prompt 能显著提升错误识别。
 2. Kimi 的准确率更高，但延迟和成本更高。Kimi 82.4% vs DeepSeek 73.3%，但 Kimi completion 更长，成本约为 DeepSeek 的数倍。
-3. strict-scaffolded 没有进一步提升准确率。它的准确率为 87.3%，略低于 context-aware 的 90.9%；这说明 anti-leakage 约束有教育价值，但可能带来轻微准确率 trade-off。
+3. strict-scaffolded 没有进一步提升准确率。它的准确率为 87.27%，略低于 context-aware 的 90.91%；这说明 anti-leakage 约束有教育价值，但可能带来轻微准确率 trade-off。
 4. Function Error 是最弱类别。18 条 Function Error 只有 2 条预测正确，常被误分到 Logic Error、Type Error 或 Conceptual Error。
 5. Logic Error 是过宽类别。大量 Condition、Index、Name、Function 错误会被吸入 Logic Error，说明后续 taxonomy 需要继续细分。
 
@@ -254,7 +256,7 @@ erDiagram
 
 英文可用版：
 
-> The results show that runtime evidence is the most important factor in improving error-category identification. The baseline prompts achieved 55.5% accuracy on average, while the context-aware prompts achieved 90.9%. This supports the project’s central claim that sandbox-derived evidence, such as runtime status and output comparison, can substantially improve the diagnostic quality of LLM-generated feedback. Kimi achieved higher overall accuracy than DeepSeek (82.4% vs. 73.3%), but with higher latency and substantially higher estimated cost. The strict-scaffolded prompt did not improve accuracy over the context-aware prompt, suggesting a trade-off between additional safety constraints and diagnostic precision.
+> The results show that runtime evidence is the most important factor in improving error-category identification. The baseline prompts achieved 55.45% accuracy on average, while the context-aware prompts achieved 90.91%. This supports the project’s central claim that sandbox-derived evidence, such as runtime status and output comparison, can substantially improve the diagnostic quality of LLM-generated feedback. Kimi achieved higher overall accuracy than DeepSeek (82.4% vs. 73.3%), but with higher latency and substantially higher estimated cost. The strict-scaffolded prompt did not improve accuracy over the context-aware prompt, suggesting a trade-off between additional safety constraints and diagnostic precision.
 
 ### 6.5 Current PECI A-X Independent Evaluation
 

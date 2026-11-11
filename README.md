@@ -1,18 +1,23 @@
 # Context-Aware AI Programming Feedback System
 
-Revision: 2026-09-30 11:23:28 CST (Asia/Macau)
+Revision: 2026-11-11 (Asia/Macau)
 
 This project is a Django prototype for Lu Jiayi's FYP. It gives beginner Python students formative feedback by combining sandbox execution evidence with LLM-generated tutoring comments. The system supports a student submission portal, an instructor dashboard, learning analytics, and a reproducible evaluation pipeline comparing DeepSeek and Kimi under multiple prompt designs.
 
 ## Current Scope
 
-- Student workflow: login, choose from 20 fixed-taxonomy programming questions, submit Python code, receive feedback, retry the same question with the previous code preserved, jump to another question, and review submission history.
-- Runtime evidence: execute code in a sandbox, support stdin sample input, compare actual and expected output, and record timeout/runtime status.
-- Feedback generation: store prompt version, full prompt text, provider, model, token usage, estimated cost, JSON validity, and solution-leakage flag.
-- Instructor workflow: staff-only dashboard for questions, recent submissions, common error categories, student profiles, and evaluation results.
-- Analytics: fixed-topic mastery radar charts, per-topic attempt timelines, repeated errors, mastered concepts, class-level error distribution, hard questions, and teaching suggestions.
-- Evaluation: the 55-sample Day 12 prompt comparison, a separate 12-sample hand-crafted boundary evaluation, and a current-taxonomy PECI A-X independent run on the same 55 Refactory samples, with provenance, confirmed ground truth, confusion matrices, and an AI-assisted human review spot-check.
-- Reproducible demo data: four human-authored trajectories with five attempts on the same question, explicit attempt numbers, misconceptions, runtime outcomes, and a final solved attempt. Seed generation makes no external API call.
+- Student workflow: choose a question, submit code, inspect feedback beside execution evidence, retry with previous code preserved, and review the linked attempt history.
+- Progress: all time-ordered weighted Topic attempt credits are summarised with EMA (alpha=0.5).
+- Current Status: a separate view averages up to five recent weighted attempts per Topic and provides a next-practice action. All eight Topics remain visible, including those without evidence.
+- Instructor analytics: distinct student counts are primary; submission frequency is secondary. Topic follow-up uses each student's latest related attempt. Stored PECI, project and legacy diagnoses remain distinct.
+- Student Directory: staff-only search and pagination, five active students per page, linking to individual evidence.
+- Question difficulty: average attempts through first solve in solved practice runs, solve rate, unresolved attempts, mismatch and runtime failures.
+- Interface: English labels, shared result/archive layout, Python syntax colouring and internal scrolling for long analytics tables. The earlier language switch has been removed.
+- Experiment remains available for staff; `/evaluation/` is removed. Batch assessment code and historical evidence remain offline.
+- Current revised-taxonomy evaluation: 55 selected Refactory programs, two providers, strict-scaffolded only; DeepSeek 27/55 (49.09%), Kimi 31/55 (56.36%), pooled 58/110 (52.73%). Three unusable Kimi outputs remain in the denominator. These are different labels from the historical A-X assessment and not an independent held-out test.
+- Seeded practice histories and any separate fictional-class database are demonstration fixtures, not classroom-study results. Local SQLite databases and API keys are not uploaded to GitHub.
+
+For the Chinese operating guide, see [docs/USER_GUIDE_ZH.md](docs/USER_GUIDE_ZH.md).
 
 ## Human-Guided Taxonomies
 
@@ -33,24 +38,11 @@ The eight fixed question topics are:
 - Strings, Input, and Output
 - Collections and Indexing
 
-The primary error taxonomy now uses the 24 Programming Error names from PECI
-Table 1 directly. The paper's A-X codes are retained internally as source
-identifiers, while user-facing pages show only the exact literature category
-names. The FYP adds a researcher-written operational definition to each label
-so that the LLM has a repeatable decision boundary. The LLM may select one
-internal code, but it may not invent, merge, or rename a category.
+The current taxonomy combines the 24 PECI A-X labels with four explicitly project-defined additions: Condition Error, Loop Boundary Error, Logical error and Runtime error. Project categories are not presented as literature categories. The operational definitions and priority rules live in `feedback_app/taxonomy.py`.
 
-Three system outcomes are kept outside the literature taxonomy: `No Error`,
-`Outside PECI Scope`, and `Unknown`. Runtime evidence such as `TypeError`,
-`IndexError`, timeout, stderr, and output mismatch is stored separately. A
-runtime exception is not relabelled as a PECI error unless the submitted code
-actually satisfies one of the A-X definitions.
+`feedback_schema_v4_revised_taxonomy` supports eight outcomes: `peci_error`, `no_error`, `outside_peci_scope`, `condition_error`, `loop_boundary_error`, `logical_error`, `runtime_error` and `unknown`. Only `peci_error` carries an A-X code. Execution status is stored separately from diagnostic category.
 
-The canonical definitions, PECI mappings, topic aliases, and prompt text live
-in `feedback_app/taxonomy.py`. `feedback_schema_v3_peci` injects those definitions
-and the classification priority into every feedback prompt. Django Admin uses
-a fixed multi-select field for question topics, so new questions cannot create
-free-form topic wording through the normal instructor workflow.
+Questions use the eight predefined Topics. Topic scores are heuristic practice estimates, not standardised ability measurements. The partial-credit baseline uses the latest mark for each question, then reattributes historical attempts; it is not a sequence of permanently fixed updates based solely on earlier attempts.
 
 To propose fixed tags for newly added, untagged questions, first run a preview:
 
@@ -67,8 +59,7 @@ API call, data sharing, and expected cost.
 The completed Day 12/14 evaluation retains its original v1/v2 category labels
 for reproducibility. Migration `0010` copies those values to
 `legacy_error_category`; it does not manufacture A-X labels for historical
-records. PECI A-X accuracy is reported only from the separate, completed v3
-evaluation described below. `python manage.py canonicalize_categories` also
+records. The v3 A-X assessment below is historical; current revised results use v4 and a different label space. `python manage.py canonicalize_categories` also
 removes internal source-code prefixes from the display field of current PECI
 records; it does not replace the stored original prompt or raw AI response.
 
@@ -115,9 +106,11 @@ Useful demo pages:
 
 - Student submission: `http://127.0.0.1:8000/student/`
 - Student profile: `http://127.0.0.1:8000/profile/`
+- Current status: `http://127.0.0.1:8000/profile/current/`
+- Student directory (staff): `http://127.0.0.1:8000/analytics/students/`
 - Instructor dashboard: `http://127.0.0.1:8000/instructor/`
 - Learning analytics: `http://127.0.0.1:8000/analytics/`
-- Evaluation dashboard: `http://127.0.0.1:8000/evaluation/`
+- `/evaluation/` is not exposed; use offline assessment files.
 - Staff experiment interface: `http://127.0.0.1:8000/experiment/`
 
 ## Environment Variables
@@ -152,11 +145,9 @@ python manage.py aggregate_evaluation_runs --run-ids 1,2 --dedupe-latest --name 
 
 The final Day 12 real-run report is `evaluation_reports/day12_deepseek_kimi_refactory_55_final_real_llm_summary.md`. The canonical AI-assisted human review spot-check file is `evaluation_reports/day12_ai_assisted_human_review_final_20.csv`.
 
-### Independent PECI A-X Evaluation
+### Historical Frozen A-X Evaluation (v3)
 
-The current PECI taxonomy must not be evaluated against the legacy Day 12
-ground-truth labels. The independent A-X workflow therefore has two guarded
-phases.
+This section records the earlier frozen A-X assessment. It is separate from the current 24+4 results above. Separate label files do not make reused programs an independent test set. The annotation and assessment workflow has two guarded phases.
 
 Phase 1 asks one provider for annotation proposals. It withholds the old
 category from the classifier prompt, supplies the fixed PECI definitions and
@@ -182,7 +173,7 @@ locked scope of 55 samples x 2 providers x one `strict_scaffolded` prompt:
 python manage.py run_peci_ax_evaluation --run-llm --kimi-min-interval 21 --retry-delay 21
 ```
 
-This makes 110 paid API calls and writes the following independent evidence:
+This schedules 110 sample-provider outcomes; repairs and technical retries can add requests. Historical outputs include:
 
 - `evaluation_reports/peci_ax_evaluation_summary.json`
 - `evaluation_reports/peci_ax_evaluation_summary.md`
@@ -214,7 +205,7 @@ Final real-run headline results:
 
 - 330 model outputs from 55 samples, 2 providers, and 3 prompt versions.
 - Overall category accuracy: 77.88%.
-- Prompt accuracy: baseline 55.5%, context-aware 90.9%, strict-scaffolded 87.3%.
+- Prompt accuracy: baseline 55.45%, context-aware 90.91%, strict-scaffolded 87.27%.
 - Provider accuracy: Kimi 82.4%, DeepSeek 73.3%.
 - JSON compliance: 99.7%.
 - Solution leakage: 0%.
@@ -228,6 +219,12 @@ Supplemental boundary evaluation:
 - Solution leakage: 0%.
 - API/model errors after Kimi slow rerun and single retry: 0.
 - This run is reported separately as a boundary/system-coverage check and is not mixed into the Day 12 Refactory headline metrics.
+
+## Current Revised Assessment
+
+The final revised-label summary is `evaluation_reports/peci_ax_evaluation_revised_final_summary.md`. Earlier files labelled `revised` or `revised_v2` are intermediate snapshots. The original 29 outside cases were confirmed as 4 A-X, 1 Condition, 1 Loop Boundary, 13 Logical and 10 Runtime; the full set is 30 A-X plus 25 supplementary labels. Codes, raw observations and diagnosis must remain distinguishable.
+
+Do not rerun paid evaluation or reset demo histories merely to inspect the website. The local environment variable `DJANGO_DB_PATH` can select an isolated snapshot; `REPORT_DATA_NOTICE` can describe its provenance. A separate 30-account fictional demo database used for UI review is local only and is not a real class.
 
 ## Data And Provenance
 

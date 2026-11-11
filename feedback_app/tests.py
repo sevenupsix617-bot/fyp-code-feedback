@@ -1858,12 +1858,12 @@ class LearningAnalyticsTests(TestCase):
 
         self.assertEqual(context["submission_count"], 20)
         self.assertEqual(context["question_count"], 20)
-        self.assertEqual(len(context["student_profiles"]), 2)
+        self.assertEqual(context["student_count"], 2)
         self.assertIn(
             "Misspelled names or keywords",
             [item["error_category"] for item in context["common_errors"]],
         )
-        self.assertTrue(context["concept_weakness"])
+        self.assertTrue(context["topic_evidence"])
         self.assertTrue(context["instructional_recommendations"])
         self.assertTrue(context["saved_next_steps"])
 
@@ -2111,31 +2111,26 @@ class RoleAndStudentPortalTests(TestCase):
         self.client.login(username="instructor", password="instructor123")
         response = self.client.get("/analytics/")
         self.assertContains(response, "Class Analytics")
-        self.assertContains(response, "Common PECI Error Categories")
-        self.assertContains(response, "Weak Concepts")
+        self.assertContains(response, "Error Categories by Student")
+        self.assertContains(response, "Students Needing Topic Follow-up")
         self.assertContains(response, "Instructional Suggestions")
-        self.assertContains(response, "Skill Mastery Overview")
+        self.assertContains(response, "Find an Individual Student")
         self.assertContains(response, "Each Topic uses an EMA (alpha=0.5) of all baseline-weighted attempt credits.")
         self.assertNotContains(response, "Each Topic averages baseline-weighted credits from the latest attempt")
         self.assertContains(response, "Question Difficulty Overview")
         self.assertContains(response, "Average attempts to solve")
-        self.assertContains(response, "Student Activity")
+        self.assertContains(response, "Student Directory")
         self.assertContains(response, "Division and modulo")
 
-    def test_analytics_profiles_scroll_when_more_students_join(self):
+    def test_analytics_links_to_searchable_student_directory(self):
         get_user_model().objects.create_user(username="student3")
         self.client.login(username="instructor", password="instructor123")
-
         response = self.client.get("/analytics/")
-
-        self.assertContains(response, 'id="student-profile-track"')
-        self.assertContains(response, 'id="student-carousel-next"')
-        self.assertContains(response, 'id="student-carousel-prev"')
-        self.assertEqual(
-            response.content.decode().count('class="student-profile-slide"'),
-            3,
-        )
-        self.assertContains(response, "student3")
+        self.assertContains(response, 'href="/analytics/students/"')
+        self.assertNotContains(response, 'id="student-profile-track"')
+        directory = self.client.get("/analytics/students/")
+        self.assertContains(directory, "student3")
+        self.assertContains(directory, 'id="student-search"')
 
     def test_evaluation_page_removed_but_experiment_remains(self):
         for username, password in (
@@ -2173,8 +2168,8 @@ class RoleAndStudentPortalTests(TestCase):
         response = self.client.get(f"/analytics/students/{student1.id}/")
         self.assertContains(response, "Student Profile")
         self.assertContains(response, "Skill Mastery Radar")
-        self.assertContains(response, "Weak Concepts")
-        self.assertContains(response, "Mastered Concepts")
+        self.assertContains(response, "Weak Topics")
+        self.assertContains(response, "Topics in Solved Attempts")
         self.assertContains(response, f'href="/analytics/students/{student1.id}/current/"')
 
     @patch("feedback_app.views.call_llm_with_metadata")
@@ -2185,11 +2180,11 @@ class RoleAndStudentPortalTests(TestCase):
 
         response = self.client.get("/profile/current/")
         self.assertContains(response, "Current Knowledge Status")
-        self.assertContains(response, "Latest 5 attempts per topic")
+        self.assertContains(response, "latest 5 attempts per Topic")
         self.assertContains(response, "not a standardised assessment")
         self.assertContains(response, "Historical Progress")
         self.assertContains(response, "Recent score")
-        self.assertContains(response, "Unresolved")
+        self.assertContains(response, "Recent unresolved")
         self.assertContains(response, "No evidence")
         self.assertContains(response, "/student/?topic=iteration_range")
         self.assertEqual(response.context["status"]["user"], student1)
@@ -2432,9 +2427,9 @@ class RoleAndStudentPortalTests(TestCase):
         )
         self.assertContains(response, "View attempt history")
         self.assertContains(response, f"?attempt={record.pk}")
-        self.assertContains(response, 'data-ui-language="zh"')
-        self.assertContains(response, 'feedback_app/js/ui-i18n.js')
-        self.assertIsNotNone(finders.find("feedback_app/js/ui-i18n.js"))
+        self.assertNotContains(response, 'data-ui-language="zh"')
+        self.assertNotContains(response, 'feedback_app/js/ui-i18n.js')
+        self.assertIsNone(finders.find("feedback_app/js/ui-i18n.js"))
         self.assertContains(response, 'id="submitted-code-heading"')
         self.assertContains(response, '<span class="review-line-number" aria-hidden="true">1</span>', html=True)
         self.assertContains(response, 'class="review-token-builtin">print</span>')

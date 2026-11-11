@@ -14,7 +14,7 @@
     {% elif record.feedback_text or record.error_category %}
         <div class="review-classification{% if request.user.is_staff %} has-confidence{% endif %}">
             <div><span class="eyebrow">Error Classification</span><strong>{{ record.error_category|default:"not classified" }}</strong>{% if record.classification_outcome %}<small>Outcome: {{ record.classification_outcome }}</small>{% endif %}</div>
-            <div><span class="eyebrow">Concept</span><strong>{{ record.concept_reference|default:"not specified" }}</strong></div>
+            <div><span class="eyebrow">Topic</span><strong>{{ record.concept_reference|default:"not specified" }}</strong></div>
             <div><span class="eyebrow">Feedback Level</span><strong>{{ record.feedback_level|default:"not specified" }}</strong></div>
             {% if request.user.is_staff %}<div><span class="eyebrow">AI self-reported confidence</span><strong>{{ record.confidence|default:"not recorded" }}</strong><small>Not a calibrated reliability score</small></div>{% endif %}
         </div>

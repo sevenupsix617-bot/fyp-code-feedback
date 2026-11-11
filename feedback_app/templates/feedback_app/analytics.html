@@ -1,260 +1,90 @@
 {% extends "feedback_app/base.html" %}
-
 {% block title %}Analytics | AI Programming Feedback{% endblock %}
 {% block page_eyebrow %}Learning Analytics{% endblock %}
 {% block page_title %}Class Analytics{% endblock %}
-{% block page_subtitle %}Class-level evidence, student progress profiles, and stored next-step suggestions.{% endblock %}
-
-{% block page_actions %}
-    <a href="{% url 'history' %}" class="btn btn-outline-secondary">
-        <i data-lucide="history" class="icon-sm" aria-hidden="true"></i>
-        History
-    </a>
-    <a href="{% url 'instructor_dashboard' %}" class="btn btn-primary">
-        <i data-lucide="layout-dashboard" class="icon-sm" aria-hidden="true"></i>
-        Dashboard
-    </a>
-{% endblock %}
-
+{% block page_subtitle %}Distinct students first; submission frequency provides supporting evidence.{% endblock %}
+{% block page_actions %}<a class="btn btn-outline-secondary" href="{% url 'history' %}">History</a><a class="btn btn-primary" href="{% url 'student_directory' %}">Student Directory</a>{% endblock %}
 {% block extra_head %}
-    <style>
-        .student-profile-track {
-            display: flex;
-            gap: 1rem;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-            position: relative;
-            scroll-snap-type: x mandatory;
-        }
-
-        .student-profile-slide {
-            border: 1px solid var(--line);
-            border-radius: 4px;
-            flex: 0 0 min(100%, 535px);
-            min-width: 0;
-            padding: 1rem;
-            scroll-snap-align: start;
-        }
-
-        .student-carousel-button {
-            align-items: center;
-            display: inline-flex;
-            height: 36px;
-            justify-content: center;
-            padding: 0;
-            width: 36px;
-        }
-
-        .question-difficulty-table {
-            min-width: 960px;
-        }
-
-        @media (max-width: 767.98px) {
-            .student-profile-slide {
-                flex-basis: 100%;
-            }
-        }
-    </style>
+<style>
+    .class-evidence-table td, .class-evidence-table th {
+        vertical-align: middle;
+        padding: .75rem .55rem;
+    }
+    .question-difficulty-table { min-width: 960px; }
+    .analytics-table-scroll {
+        max-height: 440px;
+        overflow: auto;
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+        scrollbar-color: #8ba6aa #f0f5f5;
+        border-bottom: 1px solid var(--line);
+    }
+    .analytics-table-scroll:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+    }
+    .analytics-table-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+    .analytics-table-scroll::-webkit-scrollbar-track { background: #f0f5f5; }
+    .analytics-table-scroll::-webkit-scrollbar-thumb {
+        background: #8ba6aa;
+        border: 2px solid #f0f5f5;
+        border-radius: 8px;
+    }
+    .analytics-table-scroll .table { border-collapse: separate; border-spacing: 0; }
+    .analytics-table-scroll .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--surface-soft);
+        box-shadow: inset 0 -1px 0 var(--line);
+    }
+    @media print {
+        .analytics-table-scroll { max-height: none; overflow: visible; }
+        .analytics-table-scroll .table thead th { position: static; }
+    }
+</style>
 {% endblock %}
-
 {% block content %}
     <div class="row g-3 section-gap">
-        <div class="col-md-6 col-xl-3">
-            <div class="metric">
-                <div class="metric-label">Submissions</div>
-                <div class="metric-value">{{ submission_count }}</div>
-                <div class="small text-muted mt-2">All saved attempts</div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="metric">
-                <div class="metric-label">Classified</div>
-                <div class="metric-value">{{ classified_count }}</div>
-                <div class="small text-muted mt-2">Records with a stored classification outcome</div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="metric">
-                <div class="metric-label">Unresolved</div>
-                <div class="metric-value">{{ non_success_count }}</div>
-                <div class="small text-muted mt-2">All saved attempts not marked solved</div>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="metric">
-                <div class="metric-label">Taxonomy</div>
-                <div class="metric-value">{{ taxonomy_count }}</div>
-                <div class="small text-muted mt-2">24 categories named directly from PECI Table 1</div>
-            </div>
-        </div>
+        <div class="col-6 col-lg-3"><div class="metric"><div class="metric-label">Students</div><div class="metric-value">{{ student_count }}</div><div class="small text-muted">Active student accounts</div></div></div>
+        <div class="col-6 col-lg-3"><div class="metric"><div class="metric-label">Practising students</div><div class="metric-value">{{ practising_student_count }}</div><div class="small text-muted">At least one question attempt</div></div></div>
+        <div class="col-6 col-lg-3"><div class="metric"><div class="metric-label">Topic follow-up</div><div class="metric-value">{{ follow_up_student_count }}</div><div class="small text-muted">Latest related attempt unresolved</div></div></div>
+        <div class="col-6 col-lg-3"><div class="metric"><div class="metric-label">Practice submissions</div><div class="metric-value">{{ practice_submission_count }}</div><div class="small text-muted">Secondary frequency measure</div></div></div>
     </div>
+    <p class="small text-muted section-gap">Class evidence uses active students' question attempts, excluding staff experiments and anonymous records. Repeated attempts by one student count once in each affected-student measure. No practice evidence is not a difficulty diagnosis.</p>
 
-    <div class="row g-4 section-gap">
-        <div class="col-lg-4">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Deterministic Statistics</div>
-                    <h2 class="h5 mb-0">Common PECI Error Categories</h2>
-                </div>
-                <div class="panel-body">
-                    {% for item in common_errors %}
-                        <div class="stat-list-item">
-                            <div class="d-flex justify-content-between gap-3 mb-1">
-                                <span>{{ item.error_category }}</span>
-                                <span class="text-muted">{{ item.total }}</span>
-                            </div>
-                            <div class="progress-thin" aria-hidden="true">
-                                <span style="width: {{ item.percent }}%;"></span>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No new submissions have a PECI classification yet.</p>
-                    {% endfor %}
-                    <p class="small text-muted mt-3 mb-0">The page shows the exact literature category names. A-X source codes are stored internally only for traceability. Runtime status and legacy labels are excluded.</p>
-                </div>
-            </section>
-        </div>
+    <section class="panel section-gap" id="class-topic-section">
+        <div class="panel-header"><div class="eyebrow">Topic Evidence</div><h2 class="h5 mb-1">Students Needing Topic Follow-up</h2><p class="small text-muted mb-0">For each Topic: students whose latest related attempt remains unresolved / students who have practised that Topic. Fixed question tags define the Topic.</p></div>
+        <div class="table-responsive"><table class="table mb-0 class-evidence-table">
+            <thead><tr><th>Topic</th><th>Students</th><th>Submissions</th><th>Evidence</th></tr></thead>
+            <tbody>{% for topic in topic_evidence %}<tr data-topic="{{ topic.id }}">
+                <td class="fw-semibold">{{ topic.label }}</td>
+                <td>{% if topic.has_evidence %}<strong>{{ topic.affected_students }} / {{ topic.practising_students }}</strong><div class="small text-muted">{{ topic.percent }}% of practising students</div>{% else %}<span class="text-muted">No evidence</span>{% endif %}</td>
+                <td>{{ topic.attempt_count }} total<div class="small text-muted">{{ topic.unresolved_attempt_count }} unresolved attempts</div></td>
+                <td>{% if topic.has_evidence %}<a href="{{ topic.evidence_url }}" class="btn btn-sm btn-outline-primary">View records</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>{% endfor %}</tbody>
+        </table></div>
+    </section>
 
-        <div class="col-lg-4">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Concept Evidence</div>
-                    <h2 class="h5 mb-0">Weak Concepts</h2>
-                </div>
-                <div class="panel-body">
-                    {% for item in concept_weakness %}
-                        <div class="stat-list-item">
-                            <div class="d-flex justify-content-between gap-3 mb-1">
-                                <span>{{ item.concept_reference }}</span>
-                                <span class="text-muted">{{ item.total }}</span>
-                            </div>
-                            <div class="progress-thin" aria-hidden="true">
-                                <span style="width: {{ item.percent }}%;"></span>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted mb-0">No weak concepts have enough evidence yet.</p>
-                    {% endfor %}
-                </div>
-            </section>
-        </div>
+    <section class="panel section-gap" id="class-errors-section">
+        <div class="panel-header"><div class="eyebrow">Stored Diagnoses</div><h2 class="h5 mb-1">Error Categories by Student</h2><p class="small text-muted mb-0">Distinct students who have ever received each stored label. Occurrences are secondary and may include earlier errors that were later solved.</p></div>
+        <div class="table-responsive analytics-table-scroll" tabindex="0" role="region" aria-label="Error categories table"><table class="table mb-0 class-evidence-table">
+            <thead><tr><th>Error category</th><th>Source</th><th>Students</th><th>Occurrences</th><th>Evidence</th></tr></thead>
+            <tbody>{% for item in common_errors %}<tr>
+                <td class="fw-semibold">{{ item.error_category }}</td><td><span class="small" title="Stored schema versions: {{ item.schema_versions }}">{{ item.source_label }}</span></td><td><strong>{{ item.student_count }}</strong></td><td>{{ item.attempt_count }}</td><td><a class="btn btn-sm btn-outline-primary" href="{{ item.evidence_url }}">View records</a></td>
+            </tr>{% empty %}<tr><td colspan="5" class="text-muted">No stored student error diagnoses are available.</td></tr>{% endfor %}</tbody>
+        </table></div>
+        <p class="small text-muted mt-3">PECI A-X: 24 literature categories. Project supplement: 4 researcher-defined categories. Legacy annotations retain their stored names; runtime exceptions do not automatically relabel them.</p>
+    </section>
 
-        <div class="col-lg-4">
-            <section class="panel h-100">
-                <div class="panel-header">
-                    <div class="eyebrow">Teaching Actions</div>
-                    <h2 class="h5 mb-0">Instructional Suggestions</h2>
-                </div>
-                <div class="panel-body">
-                    {% for item in instructional_recommendations %}
-                        <div class="stat-list-item">
-                            <div class="fw-semibold">{{ item.title }}</div>
-                            <div class="small text-muted mt-1">{{ item.body }}</div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </section>
-        </div>
-    </div>
+    <section class="panel section-gap" id="teaching-actions">
+        <div class="panel-header"><div class="eyebrow">Teaching Actions</div><h2 class="h5 mb-0">Instructional Suggestions</h2></div>
+        <div class="panel-body">{% for item in instructional_recommendations %}<div class="stat-list-item"><strong>{{ item.title }}</strong><p class="small text-muted my-1">{{ item.body }}</p><a class="small" href="{{ item.evidence_url }}">Inspect related records</a></div>{% endfor %}</div>
+    </section>
 
-    <section class="section-gap">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-2 align-items-md-end mb-3">
-            <div>
-                <div class="eyebrow">Student Profiles</div>
-                <h2 class="h5 mb-0">Skill Mastery Overview</h2>
-            </div>
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="text-muted small">Each Topic uses an EMA (alpha=0.5) of all baseline-weighted attempt credits.</span>
-                {% if student_profiles|length > 1 %}
-                    <span id="student-carousel-position" class="small text-muted" aria-live="polite">1 of {{ student_profiles|length }}</span>
-                    <button type="button" class="btn btn-outline-secondary student-carousel-button" id="student-carousel-prev" aria-label="Previous student" title="Previous student" aria-controls="student-profile-track">
-                        <i data-lucide="chevron-left" class="icon-sm" aria-hidden="true"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary student-carousel-button" id="student-carousel-next" aria-label="Next student" title="Next student" aria-controls="student-profile-track">
-                        <i data-lucide="chevron-right" class="icon-sm" aria-hidden="true"></i>
-                    </button>
-                {% endif %}
-            </div>
-        </div>
-        <div id="student-profile-track" class="student-profile-track" role="region" aria-label="Student profiles" tabindex="0">
-            {% for profile in student_profiles %}
-                <div class="student-profile-slide">
-                    <section class="panel h-100">
-                        <div class="panel-header d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
-                            <div>
-                                <div class="eyebrow">Student Activity</div>
-                                <h3 class="h5 mb-0">{{ profile.user.username }}</h3>
-                            </div>
-                            <a href="{% url 'student_profile' profile.user.id %}" class="btn btn-sm btn-outline-primary">
-                                <i data-lucide="radar" class="icon-sm" aria-hidden="true"></i>
-                                View Profile
-                            </a>
-                        </div>
-                        <div class="panel-body">
-                            <div class="row g-2 mb-3">
-                                <div class="col-6 col-xl-3">
-                                    <div class="compact-metric">
-                                        <div class="metric-label">Attempts</div>
-                                        <div class="metric-value">{{ profile.attempt_total }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-6 col-xl-3">
-                                    <div class="compact-metric">
-                                        <div class="metric-label">Questions</div>
-                                        <div class="metric-value">{{ profile.question_total }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-6 col-xl-3">
-                                    <div class="compact-metric">
-                                        <div class="metric-label">Solved Attempts</div>
-                                        <div class="metric-value">{{ profile.solved_total }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-6 col-xl-3">
-                                    <div class="compact-metric">
-                                        <div class="metric-label">Attempt Success Rate</div>
-                                        <div class="metric-value">{{ profile.solved_rate }}%</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="metric-label">Fixed Topic Mastery</div>
-                            <div class="row gx-4 mb-3">
-                                {% for topic in profile.skill_mastery.topics %}
-                                    <div class="col-md-6">
-                                        <a href="{% url 'student_skill_detail' profile.user.id topic.id %}" class="skill-score-row text-decoration-none">
-                                            <span class="small fw-semibold text-dark">{{ topic.label }}</span>
-                                            {% if topic.has_evidence %}
-                                                <span class="badge badge-soft">{{ topic.score }}</span>
-                                            {% else %}
-                                                <span class="badge text-bg-light">N/A</span>
-                                            {% endif %}
-                                        </a>
-                                    </div>
-                                {% endfor %}
-                            </div>
-
-                            <div class="mt-3">
-                                <div class="metric-label">Repeated Error Pattern</div>
-                                <div class="tag-stack">
-                                    {% for item in profile.repeated_errors %}
-                                        <span class="badge badge-warning-soft">{{ item.error_category }}: {{ item.total }}</span>
-                                    {% empty %}
-                                        <span class="text-muted small">No repeated unresolved error yet.</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-            {% empty %}
-                <div class="student-profile-slide">
-                    <section class="panel">
-                        <div class="panel-body text-muted">No active student accounts are available.</div>
-                    </section>
-                </div>
-            {% endfor %}
-        </div>
+    <section class="panel section-gap" id="student-profiles">
+        <div class="panel-header d-flex flex-wrap align-items-center justify-content-between gap-3"><div><div class="eyebrow">Student Profiles</div><h2 class="h5 mb-1">Find an Individual Student</h2><p class="small text-muted mb-0">Search the paginated directory, then open a profile for all eight Topics, attempt history and repeated errors.</p></div><a class="btn btn-primary" href="{% url 'student_directory' %}">Open Student Directory</a></div>
+        <p class="small text-muted mt-2">Each Topic uses an EMA (alpha=0.5) of all baseline-weighted attempt credits.</p>
     </section>
 
     <section class="panel section-gap">
@@ -264,13 +94,13 @@
         </div>
         <div class="panel-body">
             <p class="small text-muted mb-2">
-                This table uses student question attempts only; the class totals above include other saved records. Average attempts to solve counts submissions up to the first solved attempt in each student practice run, then averages solved runs only. More attempts to solve can signal difficulty; total attempts alone can reflect popularity. Unsolved runs stay in the solve-rate denominator.
+                This table uses student question attempts only; the student-level summaries above exclude staff experiments. Average attempts to solve counts submissions up to the first solved attempt in each student practice run, then averages solved runs only. More attempts to solve can signal difficulty; total attempts alone can reflect popularity. Unsolved runs stay in the solve-rate denominator.
             </p>
             <p class="small text-muted mb-0">
                 Popular, easier: at least 5 attempts by 2 students, at least 75% of runs solved, and an average of at most 2 attempts to solve. Difficult: at least 3 attempts to solve on average, or at least 5 attempts with a solve rate of 50% or lower. Other attempted questions have limited evidence. A mismatch ran successfully but printed the wrong output; runtime errors are exceptions, while other failures include syntax errors and timeouts.
             </p>
         </div>
-        <div class="table-responsive">
+        <div class="table-responsive analytics-table-scroll" tabindex="0" role="region" aria-label="Question difficulty table">
             <table class="table table-hover mb-0 question-difficulty-table">
                 <thead>
                     <tr>
@@ -331,7 +161,7 @@
             <h2 class="h5 mb-0">Output Comparison Status</h2>
         </div>
         <div class="panel-body">
-            <p class="small text-muted">Across all saved records, including instructor manual experiments.</p>
+            <p class="small text-muted">Across all saved records, including instructor manual experiments. This section counts submissions, not distinct students.</p>
             {% for item in output_breakdown %}
                 <div class="stat-list-item">
                     <div class="d-flex justify-content-between gap-3 mb-1">
@@ -370,38 +200,4 @@
             {% endfor %}
         </div>
     </section>
-{% endblock %}
-
-{% block extra_js %}
-    <script>
-        (function () {
-            const track = document.getElementById("student-profile-track");
-            const previous = document.getElementById("student-carousel-prev");
-            const next = document.getElementById("student-carousel-next");
-            const position = document.getElementById("student-carousel-position");
-            if (!track || !previous || !next) return;
-
-            const slides = Array.from(track.querySelectorAll(".student-profile-slide"));
-            const step = function () {
-                return slides[0].getBoundingClientRect().width
-                    + parseFloat(getComputedStyle(track).gap || "0");
-            };
-            const update = function () {
-                const maximum = Math.max(0, track.scrollWidth - track.clientWidth);
-                previous.disabled = track.scrollLeft <= 2;
-                next.disabled = track.scrollLeft >= maximum - 2;
-                position.textContent = `${Math.min(slides.length, Math.round(track.scrollLeft / step()) + 1)} of ${slides.length}`;
-            };
-
-            previous.addEventListener("click", function () {
-                track.scrollBy({ left: -step(), behavior: "smooth" });
-            });
-            next.addEventListener("click", function () {
-                track.scrollBy({ left: step(), behavior: "smooth" });
-            });
-            track.addEventListener("scroll", update, { passive: true });
-            window.addEventListener("resize", update);
-            update();
-        }());
-    </script>
 {% endblock %}

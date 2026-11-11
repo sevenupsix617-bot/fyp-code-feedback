@@ -70,6 +70,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool(
 )
 SECURE_HSTS_PRELOAD = _env_bool('DJANGO_SECURE_HSTS_PRELOAD', False)
 CURRENT_STATUS_RECENT_ATTEMPTS = max(1, _env_int('CURRENT_STATUS_RECENT_ATTEMPTS', 5))
+# Optional isolated report-preview environment; production keeps its existing DB.
+REPORT_DATA_NOTICE = os.getenv('REPORT_DATA_NOTICE', '')
 
 
 # Application definition
@@ -121,7 +123,7 @@ WSGI_APPLICATION = 'feedback_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.getenv('DJANGO_DB_PATH') or BASE_DIR / 'db.sqlite3',
     }
 }
 
